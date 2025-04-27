@@ -49,13 +49,16 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
+*_cache
 nosetests.xml
 coverage.xml
 *.cover
 *.log
 *.lock
 .hypothesis/
-.pytest_cache/
+.pytest_cache
+*test_*.json
+
 
 # Environments
 .env
@@ -72,3 +75,12 @@ coverage.xml
 *.swp
 *.swo
 *~
+
+# Temporary files from tests
+gaia_test_*.csv
+gaia_test_*.txt
+gaia_test_*.download
+gaia_test_*.pdf
+gaia_test_*.jpg
+gaia_test_*.png
+gaia_test_*.xlsx
