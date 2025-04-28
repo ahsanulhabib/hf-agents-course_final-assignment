@@ -1,8 +1,8 @@
 import os
-import operator
-import json
 import io
 import re
+import json
+import operator
 import traceback
 from typing import TypedDict, Annotated, Sequence, List, Optional, Dict, Any, Union
 
@@ -14,10 +14,12 @@ from langgraph.prebuilt import ToolExecutor, ToolInvocation
 from langgraph.graph.message import add_messages
 
 # Import from within the package
-from .llm_config import BaseChatModel, get_llm  # Use the generic getter
-from .prompts import get_planner_prompt
-from .tools import get_all_tools  # Use the function that returns tool instances
-from . import config  # Import config for defaults
+from src.gaia_agent.llm_config import BaseChatModel, get_llm  # Use the generic getter
+from src.gaia_agent.prompts import get_planner_prompt
+from src.gaia_agent.tools import (
+    get_all_tools,
+)  # Use the function that returns tool instances
+from src.gaia_agent import config  # Import config for defaults
 
 
 # --- Agent State Definition ---

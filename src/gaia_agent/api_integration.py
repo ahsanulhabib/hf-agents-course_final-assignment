@@ -1,6 +1,5 @@
 import requests
 from typing import List, Dict, Any
-from core_agent import GAIAAgent
 
 
 class GAIAApiClient:

@@ -6,11 +6,11 @@ Central configuration file for the GAIA Agent.
 # Select the primary model for the main planner agent
 DEFAULT_PLANNER_LLM = "gemini"  # Options: "gemini", "groq", "hf"
 
-GEMINI_MODEL_ID = "gemini-1.5-pro-latest"
-GROQ_MODEL_ID = "llama3-70b-8192"  # Use a more capable Groq model
-HF_INFERENCE_MODEL_ID = (
-    "mistralai/Mistral-7B-Instruct-v0.2"  # Or another preferred HF model
+GEMINI_MODEL_ID = "gemini-2.5-pro-latest"
+GROQ_MODEL_ID = (
+    "meta-llama/llama-4-scout-17b-16e-instruct"  # Use a more capable Groq model
 )
+HF_INFERENCE_MODEL_ID = "google/gemma-3-27b-it"  # Or another preferred HF model
 
 # --- Agent Settings ---
 DEFAULT_MAX_ITERATIONS = 10

@@ -1,10 +1,18 @@
 from typing import List
 from langchain_core.tools import BaseTool
 
-from .file_tools import SaveContentTool, DownloadFileTool
-from .analysis_tools import AnalyzeCsvTool, AnalyzeExcelTool, ExtractImageTextTool
-from .search_tools import TavilySearchTool, DuckDuckGoSearchTool, WikipediaSearchTool
-from .misc_tools import PythonReplTool, AnalyzeYoutubeMetadataTool
+from src.gaia_agent.tools.file_tools import SaveContentTool, DownloadFileTool
+from src.gaia_agent.tools.analysis_tools import (
+    AnalyzeCsvTool,
+    AnalyzeExcelTool,
+    ExtractImageTextTool,
+)
+from src.gaia_agent.tools.search_tools import (
+    TavilySearchTool,
+    DuckDuckGoSearchTool,
+    WikipediaSearchTool,
+)
+from src.gaia_agent.tools.misc_tools import PythonReplTool, AnalyzeYoutubeMetadataTool
 
 
 def get_all_tools(tavily_api_key: str | None = None) -> List[BaseTool]:

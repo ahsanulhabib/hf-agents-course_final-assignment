@@ -31,6 +31,8 @@ classifiers = [
 
 # Runtime dependencies - These are needed for the agent and app to run
 dependencies = [
+    "pip",
+    "ipykernel",
     "python-dotenv>1.0.0", # For loading .env file in local scripts (local_test.py)
     "langchain>=0.1.0", # Core LangChain library
     "langgraph>=0.0.30", # LangGraph framework
@@ -64,7 +66,6 @@ dependencies = [
 # Install these using 'uv pip install .[dev]'
 [project.optional-dependencies]
 dev = [
-    "python-dotenv>=1.0.0", # For loading .env file in local scripts (local_test.py)
     # "pytest>=7.0.0",      # Uncomment if you plan to add pytest tests
     # "pytest-cov",         # Uncomment for test coverage
     # "ruff",               # Uncomment to add a linter/formatter
@@ -72,5 +73,3 @@ dev = [
 
 # Optional: Project URLs (useful if you publish to PyPI or share widely)
 [project.urls]
-# Homepage = "https://github.com/your_username/gaia-agent-uv" # Example: Link to your repo
-# Repository = "https://github.com/your_username/gaia-agent-uv" # Example: Link to your repo
