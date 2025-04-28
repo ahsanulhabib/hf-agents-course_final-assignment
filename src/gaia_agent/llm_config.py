@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # Import configuration
-from src.gaia_agent import config
+import config
 
 load_dotenv()
 
@@ -19,29 +19,19 @@ def get_gemini_llm(
     api_key: Optional[str] = None,
 ) -> BaseChatModel:
     """Initializes and returns a Gemini Chat Model instance."""
-    key = api_key or os.getenv("GOOGLE_API_KEY")
+    key = api_key or os.getenv("GOOGLE_API_TOKEN")
     if not key:
-        raise ValueError("Google API Key not found. Set GOOGLE_API_KEY env var.")
+        raise ValueError("Google API Key not found. Set GOOGLE_API_TOKEN env var.")
 
-    safety_settings = [
-        {
-            "category": HarmCategory.HARASSMENT,
-            "threshold": HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-            "category": HarmCategory.HATE_SPEECH,
-            "threshold": HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-            "category": HarmCategory.SEXUALLY_EXPLICIT,
-            "threshold": HarmBlockThreshold.BLOCK_NONE,
-        },
-        {
-            "category": HarmCategory.DANGEROUS_CONTENT,
-            "threshold": HarmBlockThreshold.BLOCK_NONE,
-        },
-    ]
+    safety_settings = {
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    }
+    
     print(f"Initializing Gemini model: {model_name} with safety settings.")
+    
     return ChatGoogleGenerativeAI(
         model=model_name,
         google_api_key=key,
@@ -57,9 +47,9 @@ def get_groq_llm(
     api_key: Optional[str] = None,
 ) -> BaseChatModel:
     """Initializes and returns a Groq Chat Model instance."""
-    key = api_key or os.getenv("GROQ_API_KEY")
+    key = api_key or os.getenv("GROQ_API_TOKEN")
     if not key:
-        raise ValueError("Groq API Key not found. Set GROQ_API_KEY env var.")
+        raise ValueError("Groq API Key not found. Set GROQ_API_TOKEN env var.")
     print(f"Initializing Groq model: {model_name}")
     return ChatGroq(model_name=model_name, temperature=temperature, groq_api_key=key)
 
@@ -83,7 +73,7 @@ def get_hf_inference_llm(
         repo_id=repo_id,
         temperature=hf_temp,
         max_new_tokens=max_new_tokens,
-        huggingfacehub_api_token=key,
+        huggingfacehub_api_key=key,
         endpoint_url=api_url,
     )
 
