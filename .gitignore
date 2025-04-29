@@ -77,10 +77,14 @@ coverage.xml
 *~
 
 # Temporary files from tests
-gaia_test_*.csv
-gaia_test_*.txt
-gaia_test_*.download
-gaia_test_*.pdf
-gaia_test_*.jpg
-gaia_test_*.png
-gaia_test_*.xlsx
+gaia_test*.csv
+gaia_test*.txt
+gaia_test*.download
+gaia_test*.pdf
+gaia_test*.jpg
+gaia_test*.png
+gaia_test*.xlsx
+
+# Local test results
+local_test_results*.json
+test_results.json

@@ -8,14 +8,14 @@ from dotenv import load_dotenv
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # Import the loaded configuration dictionary and helper
-from config_loader import CONFIG, get_config_value
+from gaia_agent.config_loader import CONFIG, get_config_value
 
 load_dotenv()
 
 # Access values using the helper for safety
 _DEFAULT_LLM_TEMP = get_config_value(["llm", "default_temperature"], 0.1)
 _GEMINI_MODEL_ID = get_config_value(
-    ["llm", "models", "gemini"], "gemini-2.5-pro-latest"
+    ["llm", "models", "gemini"], "gemini-2.5-pro-exp-03-25"
 )
 _GROQ_MODEL_ID = get_config_value(["llm", "models", "groq"], "llama-3.3-70b-versatile")
 _HF_MODEL_ID = get_config_value(
@@ -73,7 +73,7 @@ def get_gemini_llm(
         google_api_key=key,
         temperature=temperature,
         safety_settings=safety_settings,
-        convert_system_message_to_human=True,
+        # convert_system_message_to_human=True,
         max_output_tokens=65536,
     )
 

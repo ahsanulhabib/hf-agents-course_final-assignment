@@ -1,0 +1,7 @@
+PatientID,Name,DateOfBirth,AdmissionDate,Room,Diagnosis,Medication,NextOfKin,Age
+1001,John Smith,1940-05-12,2023-01-05,12A,Dementia,Donepezil,Mary Smith,83
+1002,Betty Jones,1935-11-23,2023-01-12,15B,Arthritis,Ibuprofen,Peter Jones,88
+1003,Alan Brown,1938-07-30,2023-01-15,8C,Diabetes,Metformin,Susan Brown,85
+1004,Margaret Lee,1942-03-18,2023-01-20,10D,Hypertension,Amlodipine,David Lee,81
+1005,Frank Wilson,1937-09-05,2023-01-25,7A,Heart Failure,Furosemide,Emily Wilson,86
+1006,Elsie White,1941-12-01,2023-01-28,9B,Parkinson's,Levodopa,James White,82

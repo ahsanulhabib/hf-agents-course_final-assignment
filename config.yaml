@@ -2,7 +2,7 @@ llm:
   # Select the primary model for the main planner agent
   default_planner: gemini # Options: gemini, groq, hf
   models:
-    gemini: gemini-2.5-pro-latest
+    gemini: gemini-2.5-pro-exp-03-25
     groq: llama-3.3-70b-versatile # Use a more capable Groq model
     hf_inference: google/gemma-3-27b-it # Or another preferred HF model
   default_temperature: 0.1
