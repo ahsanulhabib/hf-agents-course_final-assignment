@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from typing import Optional, Type
 from pydantic import BaseModel, Field
 
-from langchain_core.tools import BaseTool
+from base_tool import BaseTool
 
 
 # --- Input Schemas ---
@@ -37,12 +37,14 @@ class SaveContentTool(BaseTool):
                 filename = os.path.basename(filename)  # Basic sanitization
                 filepath = os.path.join(temp_dir, filename)
             else:
+                # Use NamedTemporaryFile to get a unique name safely
                 temp_file = tempfile.NamedTemporaryFile(
                     delete=False, mode="w", suffix=".txt", encoding="utf-8"
                 )
                 filepath = temp_file.name
-                temp_file.close()
+                temp_file.close()  # Close the file handle immediately
 
+            # Write content to the file
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(content)
             return f"Content successfully saved to temporary file: {filepath}"
@@ -63,8 +65,10 @@ class DownloadFileTool(BaseTool):
             temp_dir = tempfile.gettempdir()
             if not filename:
                 try:
+                    # Try to get filename from URL path
                     parsed_path = urlparse(url).path
                     filename = os.path.basename(parsed_path) if parsed_path else None
+                    # Try to get filename from Content-Disposition header
                     if not filename:
                         with requests.get(url, stream=True, timeout=30) as r_head:
                             r_head.raise_for_status()
@@ -72,6 +76,7 @@ class DownloadFileTool(BaseTool):
                             if cd:
                                 fname = re.findall('filename="?(.+)"?', cd)
                                 filename = fname[0] if fname else None
+                    # Try to guess extension from Content-Type header
                     if not filename:
                         content_type = (
                             requests.head(url, timeout=10)
@@ -91,18 +96,40 @@ class DownloadFileTool(BaseTool):
                     print(
                         f"Warning: Could not determine filename from URL {url}: {e}. Generating random name."
                     )
-                    filename = f"downloaded_{uuid.uuid4().hex[:8]}.download"
+                    filename = f"downloaded_{uuid.uuid4().hex[:8]}.download"  # Default extension
 
             filename = os.path.basename(filename)  # Sanitize again
             filepath = os.path.join(temp_dir, filename)
 
-            with requests.get(url, stream=True, timeout=60) as r:
-                r.raise_for_status()
+            # Download the file content
+            with requests.get(url, stream=True, timeout=60) as r:  # Increased timeout
+                r.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
                 with open(filepath, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
                         f.write(chunk)
-            return f"File successfully downloaded from {url} and saved to temporary path: {filepath}"
+            return_str = f"File successfully downloaded from {url} and saved to temporary path: {filepath}"
+            return return_str
         except requests.exceptions.RequestException as e:
-            return f"Error downloading file from URL {url}: Network error - {str(e)}"
+            return_str = (
+                f"Error downloading file from URL {url}: Network error - {str(e)}"
+            )
+            return return_str
         except Exception as e:
-            return f"Error downloading file from URL {url}: {str(e)}"
+            return_str = f"Error downloading file from URL {url}: {str(e)}"
+            return return_str
+
+
+if __name__ == "__main__":
+    # Example usage of all available tools
+    save_tool = SaveContentTool()
+    download_tool = DownloadFileTool()
+
+    # Save content example
+    save_result = save_tool._run("Hello, World!", "example.txt")
+    print("✅" if "successfully" in save_result.lower() else "❌", save_result)
+
+    # Download file example
+    download_result = download_tool._run(
+        "https://huggingface.co/spaces/baixianger/RobotPai/blob/main/system_prompt.txt"
+    )
+    print("✅" if "successfully" in download_result.lower() else "❌", download_result)

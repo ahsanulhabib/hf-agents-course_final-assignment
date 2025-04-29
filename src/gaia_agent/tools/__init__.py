@@ -1,21 +1,15 @@
-from typing import List
+import os
+from typing import List, Optional
 from langchain_core.tools import BaseTool
 
-from src.gaia_agent.tools.file_tools import SaveContentTool, DownloadFileTool
-from src.gaia_agent.tools.analysis_tools import (
-    AnalyzeCsvTool,
-    AnalyzeExcelTool,
-    ExtractImageTextTool,
-)
-from src.gaia_agent.tools.search_tools import (
-    TavilySearchTool,
-    DuckDuckGoSearchTool,
-    WikipediaSearchTool,
-)
-from src.gaia_agent.tools.misc_tools import PythonReplTool, AnalyzeYoutubeMetadataTool
+# Import tool classes from sibling modules
+from file_tools import SaveContentTool, DownloadFileTool
+from analysis_tools import AnalyzeCsvTool, AnalyzeExcelTool, ExtractImageTextTool
+from search_tools import TavilySearchTool, DuckDuckGoSearchTool, WikipediaSearchTool
+from misc_tools import PythonReplTool, AnalyzeYoutubeMetadataTool
 
 
-def get_all_tools(tavily_api_key: str | None = None) -> List[BaseTool]:
+def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
     """
     Initializes and returns instances of all available tools.
     Handles potential initialization errors gracefully.
@@ -24,14 +18,22 @@ def get_all_tools(tavily_api_key: str | None = None) -> List[BaseTool]:
     print("--- Initializing All Tools ---")
 
     # Search Tools
-    try:
-        tools.append(TavilySearchTool(api_key=tavily_api_key))
-        print("✅ Initialized Tavily Search")
-    except Exception as e:
-        print(f"⚠️ Tavily Search failed ({e}), falling back to DuckDuckGo.")
+    tavily_key = tavily_api_key or os.getenv("TAVILY_API_KEY")
+    if tavily_key:
+        try:
+            tools.append(TavilySearchTool(api_key=tavily_key))
+            print("✅ Initialized Tavily Search")
+        except Exception as e:
+            print(f"⚠️ Tavily Search failed ({e}), falling back to DuckDuckGo.")
+            try:
+                tools.append(DuckDuckGoSearchTool())
+                print("✅ Initialized DuckDuckGo Search (Fallback)")
+            except Exception as e_ddg:
+                print(f"❌ Failed to initialize DuckDuckGo Search: {e_ddg}")
+    else:
         try:
             tools.append(DuckDuckGoSearchTool())
-            print("✅ Initialized DuckDuckGo Search")
+            print("✅ Initialized DuckDuckGo Search (Primary)")
         except Exception as e_ddg:
             print(f"❌ Failed to initialize DuckDuckGo Search: {e_ddg}")
 
@@ -81,3 +83,12 @@ def get_all_tools(tavily_api_key: str | None = None) -> List[BaseTool]:
     print(f"--- Total tools initialized: {len(tools)} ---")
     print(f"Available tool names: {[tool.name for tool in tools]}")
     return tools
+
+
+if __file__ == "__main__":
+    # Example usage of the get_all_tools function
+    all_tools = get_all_tools()
+    print(f"Initialized {len(all_tools)} tools.")
+    for tool in all_tools:
+        print(f"Tool Name: {tool.name}, Description: {tool.description}")
+    print("All tools initialized successfully.")

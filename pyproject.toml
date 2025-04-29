@@ -33,6 +33,8 @@ classifiers = [
 dependencies = [
     "pip",
     "ipykernel",
+    "numpy>=1.21.0", # For numerical operations (used in various tools)
+    "types-PyYAML>=5.4.1", # For YAML parsing (used in config files)
     "python-dotenv>1.0.0", # For loading .env file in local scripts (local_test.py)
     "langchain>=0.1.0", # Core LangChain library
     "langgraph>=0.0.30", # LangGraph framework
@@ -66,9 +68,14 @@ dependencies = [
 # Install these using 'uv pip install .[dev]'
 [project.optional-dependencies]
 dev = [
-    # "pytest>=7.0.0",      # Uncomment if you plan to add pytest tests
-    # "pytest-cov",         # Uncomment for test coverage
-    # "ruff",               # Uncomment to add a linter/formatter
+    "ruff",               # Linter/formatter
+    "black>=23.0",        # Code formatter
+    "isort>=5.0",         # Import sorter
+    "mypy>=0.910",        # Type checker
+]
+test = [
+    "pytest>=7.0.0",      # Uncomment if you plan to add pytest tests
+    "pytest-cov",         # Uncomment for test coverage
 ]
 
 # Optional: Project URLs (useful if you publish to PyPI or share widely)
