@@ -374,9 +374,7 @@ if __name__ == "__main__":
         print(f"\n--- Testing: {test_name} ({tool_instance.name}) ---")
         print(f"Input Args: {kwargs}")
         try:
-            result = tool_instance.run(
-                kwargs
-            )  # Pass args as dict for pydantic validation
+            result = tool_instance.run(**kwargs)  # Unpack args for pydantic validation
             print(
                 f"Output:\n{result[:1000]}{'...' if len(result) > 1000 else ''}"
             )  # Truncate long output
