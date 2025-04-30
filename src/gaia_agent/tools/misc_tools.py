@@ -30,13 +30,12 @@ class PythonReplTool(BaseTool):
         "ALWAYS `print()` the results you need to see. Be careful with file system operations."
     )
     args_schema: Type[BaseModel] = PythonReplInput
-    repl_tool: LangchainPythonREPL
 
     def __init__(self):
         super().__init__()
         try:
             # Initialize the underlying Langchain tool
-            self.repl_tool = LangchainPythonREPL()
+            self._repl_tool = LangchainPythonREPL()
         except ImportError:
             raise ImportError(
                 "Python REPL tool requires `lark-parser`. Run `pip install lark-parser`."
@@ -46,7 +45,7 @@ class PythonReplTool(BaseTool):
         try:
             # Sanitize input slightly? For now, pass directly.
             # Be aware of security implications if exposing this publicly.
-            return self.repl_tool.run(command)
+            return self._repl_tool.run(command)
         except Exception as e:
             return f"Error executing Python command: {e}"
 
@@ -77,46 +76,55 @@ class AnalyzeYoutubeMetadataTool(BaseTool):
                 "skip_download": True,
                 "youtube_include_dash_manifest": False,
             }
-            extracted_info_json = None
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 try:
-                    buffer = io.StringIO()
-                    with contextlib.redirect_stdout(buffer):
-                        ydl.extract_info(youtube_url, download=False)
-                    extracted_info_json = buffer.getvalue()
-                    if not extracted_info_json:
-                        return f"Error: yt-dlp returned no metadata for {youtube_url}."
+                    video_info = ydl.extract_info(youtube_url, download=False)
+                    # Extract and clean title
+                    title = video_info.get("title", "N/A")
+                    if isinstance(title, str):
+                        title = title.strip()
 
-                    first_video_info = None
-                    for line in extracted_info_json.strip().split("\n"):
-                        try:
-                            first_video_info = json.loads(line)
-                            break
-                        except json.JSONDecodeError:
-                            continue
-                    if not first_video_info:
-                        return (
-                            f"Error: Could not parse metadata JSON for {youtube_url}."
-                        )
+                    # Extract and clean description
+                    description = video_info.get("description", "N/A")
+                    if isinstance(description, str):
+                        description = description.strip()
 
-                    title = first_video_info.get("title", "N/A")
-                    description = first_video_info.get("description", "N/A")
-                    uploader = first_video_info.get("uploader", "N/A")
-                    duration_s = first_video_info.get("duration")
+                    # Extract and clean uploader
+                    uploader = video_info.get("uploader", "N/A")
+                    if isinstance(uploader, str):
+                        uploader = uploader.strip()
+
+                    # Extract and format duration
+                    duration_s = video_info.get("duration")
                     duration = (
                         time.strftime("%H:%M:%S", time.gmtime(duration_s))
                         if duration_s
                         else "N/A"
                     )
-                    views = first_video_info.get("view_count", "N/A")
-                    date = first_video_info.get("upload_date", "N/A")
+
+                    # Extract views
+                    views = video_info.get("view_count", "N/A")
+
+                    # Extract and format date
+                    date = video_info.get("upload_date", "N/A")
+                    if isinstance(date, str):
+                        date = date.strip()
                     if date and len(date) == 8:
                         date = f"{date[:4]}-{date[4:6]}-{date[6:]}"
 
+                    # Compose summary
                     summary = (
-                        f"Metadata for YouTube video: {youtube_url}\nTitle: {title}\nUploader: {uploader}\n"
-                        f"Date: {date}\nDuration: {duration}\nViews: {views}\nDesc (truncated):\n---\n"
-                        f"{description[:1000]}{'...' if len(description) > 1000 else ''}\n---\nNote: Metadata only."
+                        f"Metadata for YouTube video: {youtube_url}\n"
+                        f"Title: {title}\n"
+                        f"Uploader: {uploader}\n"
+                        f"Date: {date}\n"
+                        f"Duration: {duration}\n"
+                        f"Views: {views}\n"
+                        f"Description:\n---\n"
+                        f"{description}\n"
+                        "---\n"
+                        "Note: Metadata only."
                     )
                     return summary
                 except yt_dlp.utils.DownloadError as e:
@@ -135,3 +143,33 @@ class AnalyzeYoutubeMetadataTool(BaseTool):
             return "Error: yt-dlp library not installed. Run `pip install yt-dlp`."
         except Exception as e:
             return f"Error setting up YouTube analysis for {youtube_url}: {str(e)}"
+
+
+if __name__ == "__main__":
+    # Test PythonReplTool
+    print("Testing PythonReplTool...")
+    python_tool = PythonReplTool()
+    result = python_tool._run("print(2 + 2)")
+    if "4" in result:
+        print("PythonReplTool result: ✅", result)
+    else:
+        print("PythonReplTool result: ❌", result)
+
+    # Test AnalyzeYoutubeMetadataTool with a valid YouTube URL
+    print("\nTesting AnalyzeYoutubeMetadataTool with a valid URL...")
+    youtube_tool = AnalyzeYoutubeMetadataTool()
+    test_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    metadata_result = youtube_tool._run(test_url)
+    if "Metadata for YouTube video" in metadata_result:
+        print("AnalyzeYoutubeMetadataTool result: ✅\n", metadata_result)
+    else:
+        print("AnalyzeYoutubeMetadataTool result: ❌\n", metadata_result)
+
+    # Test AnalyzeYoutubeMetadataTool with an invalid URL
+    print("\nTesting AnalyzeYoutubeMetadataTool with an invalid URL...")
+    invalid_url = "https://www.example.com/"
+    invalid_result = youtube_tool._run(invalid_url)
+    if "Error" in invalid_result:
+        print("AnalyzeYoutubeMetadataTool invalid URL result: ✅\n", invalid_result)
+    else:
+        print("AnalyzeYoutubeMetadataTool invalid URL result: ❌\n", invalid_result)
