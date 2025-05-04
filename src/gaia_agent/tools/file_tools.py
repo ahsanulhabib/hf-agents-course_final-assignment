@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 from typing import Optional, Type
 from pydantic import BaseModel, Field
 
-from base_tool import BaseTool
+from gaia_agent.tools.base_tool import BaseTool
 
 
 # --- Input Schemas ---

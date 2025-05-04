@@ -1,7 +1,5 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-
-# Import the loaded configuration dictionary
-from config_loader import CONFIG, get_config_value
+from gaia_agent.config_loader import get_config_value
 
 
 def get_planner_prompt() -> ChatPromptTemplate:
@@ -9,22 +7,25 @@ def get_planner_prompt() -> ChatPromptTemplate:
     Creates the ChatPromptTemplate for the main planner agent.
     Loads the system prompt template from the YAML config.
     """
-    # Access the prompt template using dictionary keys or the helper
-    # system_prompt_template = CONFIG.get('prompts', {}).get('planner_system', "Default prompt if not found")
+    # Access the prompt template using the helper for safety
     system_prompt_template = get_config_value(
-        ["prompts", "planner_system"], "ERROR: Planner prompt not found in config.yaml"
+        keys=["prompts", "planner_system"],
+        default="ERROR: Planner system prompt not found in config.yaml",
     )
 
     if "ERROR" in system_prompt_template:
         print(f"Warning: {system_prompt_template}")
+        # Provide a minimal fallback prompt
+        system_prompt_template = "You are a helpful AI assistant. Use the available tools to answer the user's question.\nAvailable Tools:\n{tool_descriptions}\nBegin!"
 
     # Note: {tool_descriptions} is filled at runtime in agent_core.py
     return ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt_template),
+            # Optional history placeholder (if you implement chat memory later)
             MessagesPlaceholder(variable_name="chat_history", optional=True),
+            # The user's current input
             ("human", "{input}"),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
         ]
     )
 

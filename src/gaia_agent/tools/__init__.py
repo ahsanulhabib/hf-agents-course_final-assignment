@@ -3,10 +3,22 @@ from typing import List, Optional
 from langchain_core.tools import BaseTool
 
 # Import tool classes from sibling modules
-from file_tools import SaveContentTool, DownloadFileTool
-from analysis_tools import AnalyzeCsvTool, AnalyzeExcelTool, ExtractImageTextTool
-from search_tools import TavilySearchTool, DuckDuckGoSearchTool, WikipediaSearchTool
-from misc_tools import PythonReplTool, AnalyzeYoutubeMetadataTool
+from gaia_agent.tools.file_tools import SaveContentTool, DownloadFileTool
+from gaia_agent.tools.analysis_tools import (
+    AnalyzeTextTool,
+    AnalyzeCsvTool,
+    AnalyzeExcelTool,
+    ExtractImageTextTool,
+)
+from gaia_agent.tools.search_tools import (
+    TavilySearchTool,
+    DuckDuckGoSearchTool,
+    WikipediaSearchTool,
+)
+from gaia_agent.tools.misc_tools import (
+    PythonReplTool,
+    AnalyzeYoutubeMetadataTool,
+)
 
 
 def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
@@ -53,6 +65,11 @@ def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
 
     # Analysis Tools
     try:
+        tools.append(AnalyzeTextTool())
+        print("✅ Initialized Text Analysis Tool")
+    except Exception as e:
+        print(f"⚠️ Text Analysis Tool failed: {e}")
+    try:
         tools.append(AnalyzeCsvTool())
         print("✅ Initialized CSV Analysis Tool")
     except Exception as e:
@@ -64,7 +81,7 @@ def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
         print(f"⚠️ Excel Analysis Tool failed: {e}")
     try:
         tools.append(ExtractImageTextTool())
-        print("✅ Initialized Image OCR Tool (requires Tesseract)")
+        print("✅ Initialized Image OCR Tool")
     except Exception as e:
         print(f"⚠️ Image OCR Tool failed: {e}")
 

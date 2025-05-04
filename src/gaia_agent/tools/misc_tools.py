@@ -1,11 +1,7 @@
-import os
-import io
-import json
 import time
-import contextlib
 import yt_dlp
 from urllib.parse import urlparse
-from typing import Optional, Type
+from typing import Type
 from pydantic import BaseModel, Field
 
 from langchain_core.tools import BaseTool

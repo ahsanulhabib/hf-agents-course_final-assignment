@@ -8,7 +8,7 @@ from typing import Optional, Type, Union
 
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field
 from PIL import Image
 
 from gaia_agent.llm_config import get_gemini_llm

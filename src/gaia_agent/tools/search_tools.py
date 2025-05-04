@@ -2,11 +2,14 @@ import os
 from typing import Optional, Type
 from pydantic import BaseModel, Field
 
-from base_tool import BaseTool
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_community.tools.ddg_search import DuckDuckGoSearchRun
 from langchain_community.utilities import WikipediaAPIWrapper
+from langchain_community.utilities.arxiv import ArxivAPIWrapper
+
 from dotenv import load_dotenv
+
+from gaia_agent.tools.base_tool import BaseTool
 
 
 # --- Input Schemas ---
@@ -45,8 +48,8 @@ class TavilySearchTool(BaseTool):
 class DuckDuckGoSearchTool(BaseTool):
     name: str = "duckduckgo_search"
     description: str = (
-        "A fallback search engine. Use this if Tavily search fails or is unavailable. "
-        "Useful for questions about current events, facts, and general knowledge."
+        "Use this for ALL web searches, including music, lyrics, and general facts. "
+        "Preferred over Wikipedia for up-to-date or broad information."
     )
     args_schema: Type[BaseModel] = SearchInput
     api_wrapper: DuckDuckGoSearchRun
@@ -54,7 +57,6 @@ class DuckDuckGoSearchTool(BaseTool):
     def __init__(self, **kwargs):
         # Create the api_wrapper instance first
         api_wrapper_instance = DuckDuckGoSearchRun()
-        # Pass the created api_wrapper instance to the parent constructor
         # Pydantic's __init__ will set this field correctly.
         super().__init__(api_wrapper=api_wrapper_instance, **kwargs)
 
@@ -107,6 +109,26 @@ class WikipediaSearchTool(BaseTool):
             return f"Error during Wikipedia search for '{query}': {e}"
 
 
+class ArXivSearchTool(BaseTool):
+    name: str = "arxiv_search"
+    description: str = (
+        "Searches scientific papers on arXiv. "
+        "Useful for finding research papers, abstracts, and scientific information."
+    )
+    args_schema: Type[BaseModel] = SearchInput
+    api_wrapper: ArxivAPIWrapper
+
+    def __init__(self, top_k_results: int = 10, **kwargs):
+        api_wrapper_instance = ArxivAPIWrapper(top_k_results=top_k_results)
+        super().__init__(api_wrapper=api_wrapper_instance, **kwargs)
+
+    def _run(self, query: str) -> str:
+        try:
+            return self.api_wrapper.run(query)
+        except Exception as e:
+            return f"Error during arXiv search: {e}"
+
+
 if __name__ == "__main__":
     # Example usage
 
@@ -122,16 +144,19 @@ if __name__ == "__main__":
         )
         web_search_tool = DuckDuckGoSearchTool()
 
-    query = "What is the capital of Bangladesh?"
-
-    web_search_result = web_search_tool._run(query)
+    query = "Tracklist for 'Hybrid Theory' by Linkin Park"
 
     print("===" * 50)
-    print(web_search_result)
+    print(web_search_tool._run(query))
     print("===" * 50)
 
     wiki_tool = WikipediaSearchTool()
 
     print("===" * 50)
-    print(wiki_tool._run("What is the capital of Bangladesh?"))
+    print(wiki_tool._run(query))
+    print("===" * 50)
+
+    arxiv_tool = ArXivSearchTool()
+    print("===" * 50)
+    print(arxiv_tool._run("quantum computing"))
     print("===" * 50)

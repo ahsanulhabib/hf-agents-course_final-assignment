@@ -3,11 +3,10 @@ llm:
   default_planner: gemini # Options: gemini, groq, hf
   models:
     gemini: gemini-2.5-pro-exp-03-25
-    groq: llama-3.3-70b-versatile # Use a more capable Groq model
-    hf_inference: google/gemma-3-27b-it # Or another preferred HF model
+    groq: llama-3.3-70b-versatile
+    hf_inference: google/gemma-3-27b-it
   default_temperature: 0.1
-agent:
-  default_max_iterations: 10
+agent: default_max_iterations:25
 prompts:
   # System prompt for the main planner agent
   # The '|' preserves newlines and formatting.
@@ -26,10 +25,14 @@ prompts:
     - **Python REPL (python_repl):** For calculations, data manipulation, code execution, checking file existence (`os.path.exists('/path/to/file')`). ALWAYS `print()` results. Input: valid Python code.
     - **Save Content to File (save_content_to_file):** To save text content to a temporary file. Input: content (string), optional filename (string). Returns: file path.
     - **Download File (download_file_from_url):** To download a file from a URL. Input: url (string), optional filename (string). Returns: file path.
+    - **Analyze Text (analyze_text_file):** AFTER getting a text file path. Provides basic info. Input: file_path (string), query (string). For complex analysis, use Python REPL.
     - **Analyze CSV (analyze_csv_file):** AFTER getting a CSV file path. Provides basic info. Input: file_path (string), query (string). For complex analysis, use Python REPL.
     - **Analyze Excel (analyze_excel_file):** AFTER getting an Excel file path. Provides basic info. Input: file_path (string), query (string), optional sheet_name (string or int). For complex analysis, use Python REPL.
     - **Extract Image Text (extract_text_from_image):** AFTER getting an image file path. Performs OCR. Input: image_path (string). Requires Tesseract OCR engine.
     - **Analyze YouTube Metadata (analyze_youtube_metadata):** To get information *about* a YouTube video (title, description, uploader, etc.) based on its URL. Does NOT watch the video content. Input: youtube_url (string). Returns: text summary of metadata.
+
+    Note: You can use the Python REPL to check if a file exists before using it in other tools. For example, `os.path.exists('/path/to/file')`.
+    If a tool fails, acknowledge the error and adapt your plan. Don't assume success. Always use the 'duckduckgo_search' tool for any web search if Tavily search is not available.
 
     Reasoning Process:
     1.  **Understand Goal:** Analyze input. Identify URLs, file types, specific information needed.
