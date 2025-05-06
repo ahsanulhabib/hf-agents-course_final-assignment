@@ -35,3 +35,19 @@ class GAIAApiClient:
         response = requests.post(self.submit_url, json=data)
         response.raise_for_status()
         return response.json()
+
+
+if __name__ == "__main__":
+    client = GAIAApiClient()
+    questions = client.get_questions()
+    print("Questions:", questions)
+
+    random_question = client.get_random_question()
+    print("Random Question:", random_question)
+
+    # # Example of submitting answers (replace with actual data)
+    # username = "test_user"
+    # agent_code = "test_agent"
+    # answers = [{"question_id": 1, "answer": "Test answer"}]
+    # submission_response = client.submit_answers(username, agent_code, answers)
+    # print("Submission Response:", submission_response)

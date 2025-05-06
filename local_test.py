@@ -12,23 +12,19 @@ import traceback
 import dotenv
 import time
 import contextlib
+from pathlib import Path
 from typing import Optional
 
 # --- Configuration ---
-MAX_ITERATIONS_PER_TASK = 15
+MAX_ITERATIONS_PER_TASK = 25
 
 # --- Load Environment Variables ---
 dotenv.load_dotenv()
-print("Loaded environment variables from .env")
 
 # --- Import Agent Components ---
 try:
-    from src.gaia_agent.llm_config import (
-        get_gemini_llm,
-        get_groq_llm,
-        get_hf_inference_llm,
-    )
-    from src.gaia_agent.tools import get_tools
+    from src.gaia_agent.llm_config import get_llm
+    from src.gaia_agent.tools import get_all_tools
     from src.gaia_agent.agent_core import create_gaia_agent_graph, run_agent
 
     print("Successfully imported agent components.")
@@ -79,7 +75,7 @@ SAMPLE_QUESTIONS = [
     },
     {
         "task_id": "task_007",
-        "question": "How many studio albums were published by Mercedes Sosa between 1972 and 1985?",
+        "question": "How many studio albums were published by Mercedes Sosa between 2000 and 2009 (included)? You can use the latest 2022 version of english wikipedia.",
         "expected_answer": "12",
         "has_file": False,
         "file_content": None,
@@ -98,55 +94,196 @@ SAMPLE_QUESTIONS = [
         "has_file": False,
         "file_content": None,
     },
+    {
+        "task_id": "task_011",
+        "question": "What is the largest planet in our solar system?",
+        "expected_answer": "Jupiter",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_012",
+        "question": "What is the chemical symbol for gold?",
+        "expected_answer": "Au",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_013",
+        "question": "What is the boiling point of water in Celsius?",
+        "expected_answer": "100",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_014",
+        "question": "Translate 'Hello, how are you?' to Spanish.",
+        "expected_answer": "Hola, ¿cómo estás?",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_015",
+        "question": "What is the Pythagorean theorem?",
+        "expected_answer": "a^2 + b^2 = c^2",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_016",
+        "question": "What is the capital of Japan?",
+        "expected_answer": "Tokyo",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_017",
+        "question": "What is the speed of light in vacuum?",
+        "expected_answer": "299792458 m/s",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_018",
+        "question": "What is the largest mammal in the world?",
+        "expected_answer": "Blue whale",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_019",
+        "question": "What is the main ingredient in guacamole?",
+        "expected_answer": "Avocado",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_020",
+        "question": "What is the formula for calculating the area of a circle?",
+        "expected_answer": "πr^2",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_021",
+        "question": "Who nominated the only Featured Article on English Wikipedia about a dinosaur that was promoted in November 2016?",
+        "expected_answer": "FunkMonk",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_022",
+        "question": "In the video https://www.youtube.com/watch?v=L1vXCYZAYYM, what is the highest number of bird species to be on camera simultaneously?",
+        "expected_answer": "3",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_023",
+        "question": "Given this table defining * on the set S = {a, b, c, \n        d, e}\n\n|*|a|b|c|d|e|\n|---|---|---|---|---|\n|a|a|b|c|b|d|\n|b|b|c|a|e|c|\n|c|c|a|b|b|a|\n|d|b|e|b|e|d|\n|e|d|b|a|d|c|\n\nprovide the subset of S involved in any possible counter-examples that prove * is not commutative. Provide your answer as a comma separated list of the elements in the set in alphabetical order.",
+        "expected_answer": "b,e",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_024",
+        "question": "Examine the video at https://www.youtube.com/watch?v=1htKBjuUWec.\n\nWhat does Teal'c say in response to the \n        question \"Isn't that hot?\"",
+        "expected_answer": "extremely",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_025",
+        "question": "What is the surname of the equine veterinarian mentioned in 1.E Exercises from the chemistry materials licensed by Marisa Alviar-Agnew & Henry Agnew under the CK-12 license in LibreText's Introductory Chemistry materials as compiled 08/21/2023?",
+        "expected_answer": "Louvrier",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_026",
+        "question": "I'm making a grocery list for my mom, but she's a professor of botany and she's a real stickler when it comes to categorizing things. I need to add different foods to different categories on the grocery list, but if I make a mistake, she won't buy anything inserted in the wrong category. Here's the list I have so far:\n\nmilk, eggs, flour, whole bean coffee, Oreos, sweet potatoes, fresh basil, plums, green beans, rice, corn, bell pepper, whole allspice, acorns, broccoli, celery, zucchini, lettuce, peanuts\n\nI need to make headings for the fruits and vegetables. Could you please create \n        a list of just the vegetables from my list? If you could do that, then I can figure out how to categorize the rest of the list into the appropriate categories. But remember that my mom is a real stickler, so make sure that no botanical fruits end up on the vegetable list, or she won't get them when she's at the store. Please alphabetize the list of vegetables, and place each item in a comma separated list.",
+        "expected_answer": "broccoli, celery, corn, green beans, lettuce, sweet potatoes, zucchini",
+        "has_file": False,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_028",
+        "question": "What is the name of the actor who played Ray in the Polish-language version of Everybody Loves Raymond?",
+        "expected_answer": "Bartłomiej Kasprzykowski",
+        "has_file": True,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_029",
+        "question": "How many at bats did the Yankee with the most walks in the 1977 regular season have that same season?",
+        "expected_answer": "589",
+        "has_file": True,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_030",
+        "question": "Where were the Vietnamese specimens described by Kuznetzov in Nedoshivina's 2010 paper eventually deposited? Just give me the city name without abbreviations.",
+        "expected_answer": "Saint Petersburg",
+        "has_file": True,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_031",
+        "question": "What country had the least number of athletes \n        at the 1928 Summer Olympics? If there's a tie for a number of athletes, return the first in alphabetical order. Give the IOC country \n        code as your answer.",
+        "expected_answer": "Cuba",
+        "has_file": True,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_032",
+        "question": "Who are the pitchers with the number before and after Taishō Tamai's number as of July 2023? Give them to me in the form Pitcher Before, Pitcher After, use their last names only, in Roman characters.",
+        "expected_answer": "Yamasaki, Uehara",
+        "has_file": True,
+        "file_content": None,
+    },
+    {
+        "task_id": "task_033",
+        "question": "What is the name of the actor who played Ray in the Polish-language version of Everybody Loves Raymond?",
+        "expected_answer": "Claus",
+        "has_file": True,
+        "file_content": None,
+    },
 ]
 
 
-def initialize_agent_graph(llm_choice="gemini"):
+def initialize_agent_graph(llm_choice="groq"):
     """Initialize the LangGraph agent components with selected LLM."""
     print(f"\n--- Initializing Agent Graph (LLM: {llm_choice}) ---")
     compiled_agent_graph = None
     try:
-        # Select LLM based on choice and check keys
-        planner_llm = None
-        if llm_choice == "gemini":
-            google_api_key = os.getenv("GOOGLE_API_KEY")
-            if not google_api_key:
-                raise ValueError("GOOGLE_API_KEY not found.")
-            print(f"Using Google API Key: ...{google_api_key[-4:]}")
-            planner_llm = get_gemini_llm(api_key=google_api_key)
-        elif llm_choice == "groq":
-            groq_api_key = os.getenv("GROQ_API_KEY")
-            if not groq_api_key:
-                raise ValueError("GROQ_API_KEY not found.")
-            print(f"Using Groq API Key: ...{groq_api_key[-4:]}")
-            planner_llm = get_groq_llm(api_key=groq_api_key)
-        elif llm_choice == "hf":
-            hf_api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-            if not hf_api_key:
-                raise ValueError("HUGGINGFACEHUB_API_TOKEN not found.")
-            print(f"Using HF API Token: ...{hf_api_key[-4:]}")
-            # You might want to specify a better model here if needed
-            planner_llm = get_hf_inference_llm(
-                api_key=hf_api_key, repo_id="mistralai/Mistral-7B-Instruct-v0.2"
-            )
-        else:
+        try:
+            # Select LLM based on choice and check keys
+            planner_llm = get_llm(llm_choice)
+        except ValueError as ve:
+            print(f"ERROR: {ve}")
             raise ValueError(f"Unsupported LLM choice: {llm_choice}")
 
         print(f"LLM Initialized: {type(planner_llm)}")
 
         print("Initializing Tools...")
-        tavily_api_key = os.getenv("TAVILY_API_KEY")
-        tools = get_tools(tavily_api_key=tavily_api_key)
-        if not tools:
-            raise RuntimeError("Failed to initialize tools.")
-        print(f"Tools Initialized: {[tool.name for tool in tools]}")
 
-        print("Creating Agent Graph...")
-        agent_graph = create_gaia_agent_graph(planner_llm, tools)
-        print("Compiling Agent Graph...")
-        compiled_agent_graph = agent_graph.compile()
-        print("--- Agent Graph Initialized and Compiled Successfully ---")
-        return compiled_agent_graph
+        try:
+            tools = get_all_tools()
+            print(f"Tools Initialized: {[tool.name for tool in tools]}")
+        except Exception as e:
+            print(f"❌ No tools were initialized. Error: {e}")
+
+        try:
+            print("Creating Agent Graph...")
+            agent_graph = create_gaia_agent_graph(planner_llm, tools)
+            print("Compiling Agent Graph...")
+            compiled_agent_graph = agent_graph.compile()
+            print("--- Agent Graph Initialized and Compiled Successfully ---")
+            return compiled_agent_graph
+        except Exception as e:
+            print(f"ERROR: Failed to create or compile agent graph: {e}")
+            traceback.print_exc()
+            return None
     except Exception as e:
         print(f"ERROR: Failed during agent initialization: {e}")
         traceback.print_exc()
@@ -169,17 +306,95 @@ def save_temp_file(task_id: str, content: str, extension: str = ".txt") -> str:
 
 
 def normalize_answer(answer: Optional[str]) -> str:
-    """Basic normalization for comparison."""
+    """Normalize the answer to a more consistent format."""
     if answer is None:
         return ""
-    ans = answer.lower().strip()
-    ans = re.sub(r"[,\$\%\.\s]|miles|albums", "", ans)  # Remove common noise
-    try:  # Normalize numbers
+
+    # Unicode normalization (remove accents, etc.)
+    def unicode_normalize(text):
+        import unicodedata
+
+        return (
+            unicodedata.normalize("NFKD", text)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
+
+    ans = answer.strip().lower()
+    ans = unicode_normalize(ans)
+
+    # Remove enclosing quotes
+    ans = ans.strip("\"'`")
+
+    # Remove articles
+    # ans = re.sub(r"\b(a|an|the)\b", " ", ans)
+
+    # Remove most punctuation except . , : ; /
+    ans = re.sub(r"[^\w\s\.,:;/\-]", "", ans)
+
+    # Collapse multiple spaces
+    ans = re.sub(r"\s+", " ", ans)
+
+    # Remove trailing/leading punctuation
+    ans = ans.strip(".,:;/ ")
+
+    # Normalize numbers (e.g., "12.0" -> "12")
+    try:
         float_ans = float(ans)
         if float_ans.is_integer():
             ans = str(int(float_ans))
+        else:
+            ans = str(float_ans)
     except ValueError:
         pass
+
+    # Remove common units/phrases (optional, extend as needed)
+    units = [
+        "m/s",
+        "meters per second",
+        "km/h",
+        "kilometers per hour",
+        "°c",
+        "celsius",
+        "fahrenheit",
+        "usd",
+        "dollars",
+        "euros",
+        "kg",
+        "kilograms",
+        "g",
+        "grams",
+    ]
+    for unit in units:
+        ans = ans.replace(unit, "")
+
+    common_phrases = [
+        "for example",
+        "such as",
+        "in other words",
+        "that is",
+    ]
+    for phrase in common_phrases:
+        ans = ans.replace(phrase, "")
+
+    # Replace superscripts with ^ notation (e.g., a² -> a^2)
+    superscript_map = {
+        "²": "^2",
+        "³": "^3",
+        "⁴": "^4",
+        "⁵": "^5",
+        "⁶": "^6",
+        "⁷": "^7",
+        "⁸": "^8",
+        "⁹": "^9",
+        "¹": "^1",
+        "⁰": "^0",
+    }
+    for sup, rep in superscript_map.items():
+        ans = ans.replace(sup, rep)
+
+    # Final cleanup
+    ans = ans.strip()
     return ans
 
 
@@ -307,7 +522,7 @@ def run_tests(compiled_agent_graph):
 if __name__ == "__main__":
     print("--- Starting Local GAIA Agent Test ---")
     # Allow choosing LLM via command line argument, default to gemini
-    llm_to_test = "gemini"
+    llm_to_test = "gemini"  # Default LLM
     if len(sys.argv) > 1 and sys.argv[1] in ["gemini", "groq", "hf"]:
         llm_to_test = sys.argv[1]
         print(f"Testing with LLM specified via argument: {llm_to_test}")
@@ -319,7 +534,9 @@ if __name__ == "__main__":
     compiled_agent = initialize_agent_graph(llm_choice=llm_to_test)
     if compiled_agent:
         test_results = run_tests(compiled_agent)
-        results_filename = f"local_test_results_{llm_to_test}.json"
+        results_dir = Path(__file__).parent / "src" / "gaia_test" / "results"
+        results_dir.mkdir(parents=True, exist_ok=True)
+        results_filename = results_dir / f"local_test_results_{llm_to_test}.json"
         try:
             with open(results_filename, "w") as f:
                 json.dump(test_results, f, indent=2)

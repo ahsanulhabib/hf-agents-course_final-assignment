@@ -36,39 +36,6 @@ class AgentState(TypedDict):
 
 
 # --- Agent Nodes ---
-
-
-# def planner_node(
-#     state: AgentState, planner_llm: BaseChatModel, tools: List[BaseTool]
-# ) -> Dict[str, Any]:
-#     """Invokes the planner LLM to decide the next action or provide the final answer."""
-#     print("\n--- Executing Planner Node ---")
-#     prompt_template = get_planner_prompt()
-#     tool_descriptions = "\n".join(
-#         [f"- {tool.name}: {tool.description}" for tool in tools]
-#     )
-#     print(f"Tools available to LLM:\n{tool_descriptions}")
-#     planner_llm_with_tools = planner_llm.bind_tools(tools)
-#     formatted_messages = prompt_template.format_messages(
-#         tool_descriptions=tool_descriptions,
-#         input=state["input"],
-#         messages=state["messages"],
-#     )
-#     try:
-#         response: BaseMessage = planner_llm_with_tools.invoke(formatted_messages)
-#         print(f"Planner LLM Raw Response Type: {type(response)}")
-#         print(f"Planner LLM Raw Response Content: {response.content}")
-#         if hasattr(response, "tool_calls") and response.tool_calls:
-#             print(f"Planner LLM Tool Calls: {response.tool_calls}")
-#         else:
-#             print("Planner LLM Response: No tool calls requested.")
-#         return {}  # Response added via add_messages
-#     except Exception as e:
-#         print(f"Error in Planner Node: {e}")
-#         traceback.print_exc()
-#         return {"error": f"Planner LLM invocation failed: {e}"}
-
-
 def planner_node(
     state: AgentState, planner_llm: BaseChatModel, tools: List[BaseTool]
 ) -> Dict[str, Any]:
@@ -88,22 +55,25 @@ def planner_node(
             - 'error': An error message if the LLM invocation fails.
     """
     print("\n--- Executing Planner Node ---")
+
     prompt_template = get_planner_prompt()
-    tool_descriptions = "\n".join(
-        [f"- {tool.name}: {tool.description}" for tool in tools]
-    )
+    tool_descriptions = "\n".join([f"- {tool.name}" for tool in tools])
+
     print(f"Tools available to LLM:\n{tool_descriptions}")
-    planner_llm_with_tools = planner_llm.bind_tools(tools)
 
-    # Construct the message list for the LLM invoke call
-    # Get the formatted system prompt
-    system_prompt_message = prompt_template.format_messages(
-        tool_descriptions=tool_descriptions,
-        input=state["input"],
-    )[0]
+    if hasattr(planner_llm, "bind_tools"):
+        planner_llm_with_tools = planner_llm.bind_tools(tools)
+        system_prompt_message = prompt_template.format_messages(
+            tool_descriptions=tool_descriptions,
+            input=state["input"],
+        )[0]
+        messages_to_llm = [system_prompt_message] + list(state["messages"])
+    else:
+        planner_llm_with_tools = planner_llm
+        # For HuggingFaceEndpoint, just use the user input and message history
+        messages_to_llm = list(state["messages"])
 
-    # Prepend the system message to the history from state
-    messages_to_llm = [system_prompt_message] + list(state["messages"])
+    # print(f"Messages to LLM: {messages_to_llm}")
 
     try:
         # Invoke the LLM
@@ -181,7 +151,7 @@ def tool_node(state: AgentState, tools: List[BaseTool]) -> Dict[str, Any]:
                 else:
                     output_str = output
 
-                print(f"Tool '{tool_name}' output (truncated): {output_str}...")
+                print(f"Tool '{tool_name}' output: {output_str}...")
                 tool_messages.append(
                     ToolMessage(
                         content=output_str, tool_call_id=tool_id, name=tool_name
@@ -241,6 +211,7 @@ def _clean_gaia_answer(answer: Any) -> str:
         "Based on the analysis,",
         "Based on the information provided,",
         "According to the file,",
+        "According to the information: ",
         "The calculation shows:",
         "Here is the result:",
         "The extracted text is:",
@@ -302,8 +273,11 @@ def final_answer_node(state: AgentState) -> Dict[str, Any]:
                 f"{error_msg}. {fallback_error}" if error_msg else fallback_error
             )
             return {"final_answer": None, "error": combined_error}
+
     final_answer_cleaned = _clean_gaia_answer(final_answer_raw)
+
     original_input = state.get("input", "")
+
     if original_input.startswith(".") or ".rewsna eht sa" in original_input:
         print("Reversing cleaned answer for GAIA requirement.")
         final_answer_cleaned = final_answer_cleaned[::-1]
@@ -400,7 +374,9 @@ def run_agent(
 ) -> Dict[str, Any]:
     if max_iterations is None:
         max_iterations = get_config_value(["agent", "default_max_iterations"], 50)
+
     print(f"\n--- Running Agent for Query: '{query}' (Max Iter: {max_iterations}) ---")
+
     initial_state: AgentState = {
         "input": query,
         "messages": [HumanMessage(content=query)],
@@ -408,7 +384,9 @@ def run_agent(
         "error": None,
         "max_iterations": max_iterations,
     }
+
     final_state = None
+
     try:
         config_run = {"recursion_limit": max_iterations + 5}
         final_state = compiled_agent.invoke(initial_state, config=config_run)
@@ -449,7 +427,7 @@ if __name__ == "__main__":
     from gaia_agent.llm_config import get_llm
     # from IPython.display import Image, display
 
-    planner_llm = get_llm()
+    planner_llm = get_llm("groq")  # gemini, groq, or hf
     tools = get_all_tools()
     agent_graph = create_gaia_agent_graph(planner_llm, tools)
 
@@ -468,7 +446,7 @@ if __name__ == "__main__":
         print("Agent graph saved to src/gaia_agent/agent_graph.png")
 
     # Test the agent with a sample query
-    query = "What is the first verse of the second song in the 'Hybrid Theory' album of 'Linkin Park' band?"
+    query = "What is the first verse of the second song in the 'Hybrid Theory' album of 'Linkin Park'?"
     result = run_agent(query, compiled_graph)
     print(f"Final Result: {result}")
     print("\n--- Agent Execution Complete ---")

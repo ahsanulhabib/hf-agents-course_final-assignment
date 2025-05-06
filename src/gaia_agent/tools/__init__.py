@@ -8,16 +8,25 @@ from gaia_agent.tools.analysis_tools import (
     AnalyzeTextTool,
     AnalyzeCsvTool,
     AnalyzeExcelTool,
+    AnalyzeImageContentTool,
+    AnalyzeMP3Tool,
     ExtractImageTextTool,
 )
 from gaia_agent.tools.search_tools import (
     TavilySearchTool,
     DuckDuckGoSearchTool,
     WikipediaSearchTool,
+    ArXivSearchTool,
+    ArxivDocumentSearchTool,
 )
 from gaia_agent.tools.misc_tools import (
     PythonReplTool,
     AnalyzeYoutubeMetadataTool,
+    AddTool,
+    SubtractTool,
+    MultiplyTool,
+    DivideTool,
+    ModulusTool,
 )
 
 
@@ -30,7 +39,9 @@ def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
     print("--- Initializing All Tools ---")
 
     # Search Tools
-    tavily_key = tavily_api_key or os.getenv("TAVILY_API_KEY")
+    tavily_key = (
+        tavily_api_key or os.getenv("TAVILY_API_KEY") or os.getenv("TAVILY_API_TOKEN")
+    )
     if tavily_key:
         try:
             tools.append(TavilySearchTool(api_key=tavily_key))
@@ -55,6 +66,18 @@ def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
     except Exception as e:
         print(f"❌ Failed to initialize Wikipedia Search: {e}")
 
+    try:
+        tools.append(ArXivSearchTool())
+        print("✅ Initialized ArXiv Search")
+    except Exception as e:
+        print(f"❌ Failed to initialize ArXiv Search: {e}")
+
+    try:
+        tools.append(ArxivDocumentSearchTool())
+        print("✅ Initialized ArXiv Document Search")
+    except Exception as e:
+        print(f"❌ Failed to initialize ArXiv Document Search: {e}")
+
     # File Tools
     try:
         tools.append(SaveContentTool())
@@ -68,34 +91,54 @@ def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
         tools.append(AnalyzeTextTool())
         print("✅ Initialized Text Analysis Tool")
     except Exception as e:
-        print(f"⚠️ Text Analysis Tool failed: {e}")
+        print(f"❌ Failed to initialize Analysis Tool: {e}")
     try:
         tools.append(AnalyzeCsvTool())
         print("✅ Initialized CSV Analysis Tool")
     except Exception as e:
-        print(f"⚠️ CSV Analysis Tool failed: {e}")
+        print(f"❌ Failed to initialize Analysis Tool: {e}")
     try:
         tools.append(AnalyzeExcelTool())
         print("✅ Initialized Excel Analysis Tool")
     except Exception as e:
-        print(f"⚠️ Excel Analysis Tool failed: {e}")
+        print(f"❌ Failed to initialize Analysis Tool: {e}")
+    try:
+        tools.append(AnalyzeImageContentTool())
+        print("✅ Initialized Image Analysis Tool")
+    except Exception as e:
+        print(f"❌ Failed to initialize Analysis Tool: {e}")
+    try:
+        tools.append(AnalyzeMP3Tool())
+        print("✅ Initialized MP3 Analysis Tool")
+    except Exception as e:
+        print(f"❌ Failed to initialize Analysis Tool: {e}")
     try:
         tools.append(ExtractImageTextTool())
         print("✅ Initialized Image OCR Tool")
     except Exception as e:
-        print(f"⚠️ Image OCR Tool failed: {e}")
+        print(f"❌ Failed to initialize Analysis Tool: {e}")
 
     # Misc Tools
     try:
         tools.append(PythonReplTool())
         print("✅ Initialized Python REPL Tool")
     except Exception as e:
-        print(f"⚠️ Python REPL Tool failed: {e}")
+        print(f"❌ Failed to initialize Python REPL Tool: {e}")
     try:
         tools.append(AnalyzeYoutubeMetadataTool())
         print("✅ Initialized YouTube Metadata Tool")
     except Exception as e:
-        print(f"⚠️ YouTube Metadata Tool failed: {e}")
+        print(f"❌ Failed to initialize Analysis Tool: {e}")
+
+    try:
+        tools.append(AddTool())
+        tools.append(SubtractTool())
+        tools.append(MultiplyTool())
+        tools.append(DivideTool())
+        tools.append(ModulusTool())
+        print("✅ Initialized Math Tools (Add, Subtract, Multiply, Divide, Modulus)")
+    except Exception as e:
+        print(f"❌ Failed to initialize Math Tools: {e}")
 
     print(f"--- Total tools initialized: {len(tools)} ---")
     print(f"Available tool names: {[tool.name for tool in tools]}")

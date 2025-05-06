@@ -7,9 +7,16 @@ from langchain_community.tools.ddg_search import DuckDuckGoSearchRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_community.utilities.arxiv import ArxivAPIWrapper
 
+# Import Arxiv Loader
+try:
+    from langchain_community.document_loaders import ArxivLoader
+except ImportError:
+    ArxivLoader = None
+
 from dotenv import load_dotenv
 
 from gaia_agent.tools.base_tool import BaseTool
+from gaia_agent.logger_config import logger
 
 
 # --- Input Schemas ---
@@ -127,6 +134,59 @@ class ArXivSearchTool(BaseTool):
             return self.api_wrapper.run(query)
         except Exception as e:
             return f"Error during arXiv search: {e}"
+
+
+class ArxivDocumentSearchTool(BaseTool):
+    name: str = "arxiv_doc_search"
+    description: str = (
+        "Searches ArXiv for scientific papers. Useful for finding research papers, abstracts, and authors. "
+        "Input should be a search query (e.g., title keywords, author name)."
+    )
+    args_schema: Type[BaseModel] = SearchInput
+
+    def __init__(self, load_max_docs: int = 3, doc_content_chars_max: int = 4000):
+        super().__init__()
+        if ArxivLoader is None:
+            raise ImportError(
+                "Arxiv tool requires `arxiv` library. Run `pip install arxiv`."
+            )
+        self.load_max_docs = load_max_docs
+        self.doc_content_chars_max = doc_content_chars_max
+
+    def _run(self, query: str) -> str:
+        logger.debug(f"Running Arxiv Search for: {query}")
+        try:
+            loader = ArxivLoader(
+                query=query,
+                load_max_docs=self.load_max_docs,
+                # load_all_available_meta=True # Optionally load more metadata
+            )
+            search_docs = loader.load()
+
+            if not search_docs:
+                return f"No documents found on ArXiv for query: '{query}'"
+
+            # Format results similar to other search tools
+            formatted_results = []
+            for doc in search_docs:
+                # Truncate content
+                content = doc.page_content[: self.doc_content_chars_max]
+                if len(doc.page_content) > self.doc_content_chars_max:
+                    content += "..."
+                # Safely access metadata
+                source = doc.metadata.get("entry_id", "N/A")  # Arxiv uses entry_id
+                title = doc.metadata.get("Title", "N/A")
+                published = doc.metadata.get("Published", "N/A")  # Publication date
+
+                formatted_results.append(
+                    f'<Document source="{source}" title="{title}" published="{published}">\n{content}\n</Document>'
+                )
+
+            return "\n\n---\n\n".join(formatted_results)
+
+        except Exception as e:
+            logger.exception(f"Error during Arxiv search for '{query}'")
+            return f"Error during Arxiv search: {e}"
 
 
 if __name__ == "__main__":

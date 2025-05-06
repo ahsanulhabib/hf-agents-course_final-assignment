@@ -8,11 +8,23 @@ from typing import Optional, Type, Union
 
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
+
+try:
+    from langchain_google_genai import ChatGoogleGenerativeAI
+except ImportError:
+    ChatGoogleGenerativeAI = None
+
 from pydantic import BaseModel, Field
 from PIL import Image
 
+try:
+    from huggingface_hub import InferenceClient
+except ImportError:
+    InferenceClient = None
+
 from gaia_agent.llm_config import get_gemini_llm
 from gaia_agent.config_loader import get_config_value
+from gaia_agent.logger_config import logger
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -94,6 +106,20 @@ class AnalyzeExcelInput(BaseModel):
 class ExtractImageTextInput(BaseModel):
     image_path: str = Field(
         description="The local file path to the image file (e.g., /tmp/my_image.png)."
+    )
+
+
+class AnalyzeImageInput(BaseModel):
+    image_path: str = Field(description="The local file path to the image file.")
+    query: str = Field(
+        description="The question to ask about the image content (e.g., 'What objects are in this image?', 'Extract the text from this image')."
+    )
+
+
+class AnalyzeMP3Input(BaseModel):
+    mp3_path: str = Field(description="The local file path to the MP3 audio file.")
+    query: str = Field(
+        description="The question to ask about the transcribed audio content (e.g., 'Summarize the main points', 'What topics were discussed?')."
     )
 
 
@@ -250,9 +276,8 @@ class ExtractImageTextTool(BaseTool):
         google_api_key = os.getenv("GOOGLE_API_TOKEN") or os.getenv("GOOGLE_API_KEY")
 
         # Access values using the helper for safety
-        model_temp = get_config_value(["llm", "default_temperature"], 0.1)
         model_id = get_config_value(
-            ["llm", "models", "gemini"], "gemini-2.5-pro-latest"
+            ["llm", "models", "gemini"], "gemini-2.5-flash-preview-04-17"
         )
 
         if not google_api_key:
@@ -321,6 +346,188 @@ class ExtractImageTextTool(BaseTool):
                 f"Error during LLM OCR call for '{os.path.basename(image_path)}': {e}"
             )
             return f"Error during LLM OCR call: {e}\n{traceback.format_exc()}"
+
+
+class AnalyzeImageContentTool(BaseTool):
+    name: str = "analyze_image_content"
+    description: str = (
+        "Analyzes the visual content of an image file using Gemini 2.5 Pro. "
+        "Can answer questions about the image, describe objects, or perform OCR if requested in the query. "
+        "Requires the image file to exist locally and the GOOGLE_API_KEY environment variable."
+    )
+    args_schema: Type[BaseModel] = AnalyzeImageInput
+
+    def _run(self, image_path: str, query: str) -> str:
+        logger.debug(f"Executing AnalyzeImageContentTool for: {image_path}")
+        if ChatGoogleGenerativeAI is None:
+            return "Error: langchain-google-genai library not installed."
+        if not os.path.exists(image_path):
+            return f"Error: Image file not found: {image_path}"
+
+        # Encode Image
+        try:
+            image_b64_data_uri = _encode_image_to_base64(image_path)
+            if image_b64_data_uri.startswith("Error:"):
+                return image_b64_data_uri
+        except Exception as e:
+            logger.exception(f"Error encoding image {image_path}")
+            return f"Error encoding image: {e}"
+
+        # Get API Key and Initialize LLM (Gemini)
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        if not google_api_key:
+            return "Error: GOOGLE_API_KEY environment variable not set."
+        try:
+            # Use the specific Gemini model configured for vision
+            # Note: Ensure the model used actually supports vision input. 1.5 Pro does.
+            llm = ChatGoogleGenerativeAI(
+                model=get_config_value(
+                    ["llm", "models", "gemini"], "gemini-1.5-pro-latest"
+                ),
+                google_api_key=google_api_key,
+                temperature=get_config_value(["llm", "default_temperature"], 0.1),
+                # Safety settings are inherited from llm_config if needed
+            )
+        except Exception as e:
+            logger.exception("Error initializing Gemini LLM for image analysis")
+            return f"Error initializing Gemini LLM: {e}"
+
+        # Create Multimodal Message
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": query},  # User's query about the image
+                {"type": "image_url", "image_url": {"url": image_b64_data_uri}},
+            ]
+        )
+
+        # Invoke LLM
+        try:
+            logger.info(
+                f"Sending image '{os.path.basename(image_path)}' and query to Gemini Vision..."
+            )
+            response = llm.invoke([message])
+            analysis_result = response.content
+            logger.info("Gemini Vision analysis successful.")
+            logger.debug(f"Gemini Vision Raw Response: {analysis_result}...")
+            return f"Analysis result for '{os.path.basename(image_path)}':\n---\n{analysis_result.strip()}\n---"
+        except Exception as e:
+            logger.exception(
+                f"Error during Gemini Vision call for '{os.path.basename(image_path)}'"
+            )
+            return f"Error during Gemini Vision analysis: {e}"
+
+
+class AnalyzeMP3Tool(BaseTool):
+    name: str = "analyze_mp3_audio"
+    description: str = (
+        "Transcribes an MP3 audio file using a Hugging Face ASR model (e.g., Whisper) "
+        "and then analyzes the transcribed text using an LLM to answer a query. "
+        "Requires the MP3 file locally, HUGGINGFACEHUB_API_TOKEN, and an LLM API key (e.g., GOOGLE_API_KEY)."
+    )
+    args_schema: Type[BaseModel] = AnalyzeMP3Input
+
+    def _run(self, mp3_path: str, query: str) -> str:
+        logger.debug(f"Executing AnalyzeMP3Tool for: {mp3_path}")
+        if InferenceClient is None:
+            return "Error: huggingface-hub library not installed. Run `pip install huggingface-hub`."
+        if ChatGoogleGenerativeAI is None:
+            return "Error: langchain-google-genai library not installed."  # Assuming Gemini for analysis
+        if not os.path.exists(mp3_path):
+            return f"Error: MP3 file not found: {mp3_path}"
+
+        # Transcription Step
+        hf_api_key = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+        if not hf_api_key:
+            return "Error: HUGGINGFACEHUB_API_TOKEN environment variable not set for transcription."
+
+        asr_model_id = get_config_value(
+            ["huggingface", "asr_model"], "openai/whisper-large-v3"
+        )
+        transcribed_text = None
+        try:
+            logger.info(f"Reading MP3 file: {mp3_path}")
+            # Read audio file as bytes
+            with open(mp3_path, "rb") as f:
+                audio_bytes = f.read()
+
+            logger.info(
+                f"Transcribing audio using HF Inference API (Model: {asr_model_id})..."
+            )
+            client = InferenceClient(token=hf_api_key)
+            transcription_result = client.automatic_speech_recognition(
+                audio=audio_bytes,  # Pass bytes directly
+                model=asr_model_id,
+            )
+            # Result format is often {'text': '...'}
+            if (
+                isinstance(transcription_result, dict)
+                and "text" in transcription_result
+            ):
+                transcribed_text = transcription_result["text"]
+                logger.info("Transcription successful.")
+                logger.debug(
+                    f"Transcription Result (first 200 chars): {transcribed_text[:200]}..."
+                )
+            else:
+                logger.error(
+                    f"Unexpected transcription result format: {transcription_result}"
+                )
+                return f"Error: Transcription failed. Unexpected result format from HF API: {type(transcription_result)}"
+
+            if not transcribed_text or not transcribed_text.strip():
+                return f"Audio file '{os.path.basename(mp3_path)}' was transcribed, but no text was detected."
+
+        except ImportError:
+            return "Error: huggingface-hub library not installed for transcription."
+        except Exception as e:
+            logger.exception(f"Error during audio transcription for {mp3_path}")
+            return f"Error during audio transcription: {e}"
+
+        # Analysis
+        if transcribed_text:
+            logger.info("Analyzing transcribed text using LLM...")
+            google_api_key = os.getenv("GOOGLE_API_KEY")  # Assuming Gemini for analysis
+            if not google_api_key:
+                return "Error: GOOGLE_API_KEY needed for analysis LLM."
+
+            try:
+                # Initialize LLM (e.g., Gemini)
+                analysis_llm = ChatGoogleGenerativeAI(
+                    model=get_config_value(
+                        ["llm", "models", "gemini"], "gemini-1.5-pro-latest"
+                    ),
+                    google_api_key=google_api_key,
+                    temperature=get_config_value(["llm", "default_temperature"], 0.1),
+                )
+
+                # Create prompt for analysis
+                analysis_prompt = f"""Given the following transcription from the audio file '{os.path.basename(mp3_path)}':
+
+TRANSCRIPTION:
+---
+{transcribed_text}
+---
+
+Please answer the following query based *only* on the transcription provided:
+
+QUERY: {query}
+
+Provide a concise and relevant answer to the query.
+"""
+                message = HumanMessage(content=analysis_prompt)
+                response = analysis_llm.invoke([message])
+                analysis_result = response.content
+                logger.info("LLM analysis of transcription successful.")
+                return f"Analysis result for '{os.path.basename(mp3_path)}' based on transcription:\n---\n{analysis_result.strip()}\n---"
+
+            except Exception as e:
+                logger.exception(
+                    f"Error during LLM analysis of transcription for {mp3_path}"
+                )
+                return f"Error during LLM analysis of transcription: {e}"
+        else:
+            # Should have returned earlier if transcription failed, but as a fallback
+            return "Error: Transcription step did not produce text for analysis."
 
 
 if __name__ == "__main__":

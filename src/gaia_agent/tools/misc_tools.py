@@ -2,7 +2,7 @@ import time
 import yt_dlp
 from urllib.parse import urlparse
 from typing import Type
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from langchain_core.tools import BaseTool
 from langchain_experimental.tools import PythonREPLTool as LangchainPythonREPL
@@ -15,6 +15,30 @@ class PythonReplInput(BaseModel):
 
 class YoutubeMetadataInput(BaseModel):
     youtube_url: str = Field(description="The full URL of the YouTube video.")
+
+
+class MathInput(BaseModel):
+    a: int = Field(description="First integer operand.")
+    b: int = Field(description="Second integer operand.")
+
+    @field_validator("a", "b", mode="before")
+    @classmethod
+    def check_integer(cls, v):
+        if not isinstance(v, int):
+            try:
+                return int(v)  # Attempt conversion
+            except (ValueError, TypeError):
+                raise ValueError(f"Input must be an integer, received {type(v)}: {v}")
+        return v
+
+
+class DivideMathInput(MathInput):
+    @field_validator("b")
+    @classmethod
+    def check_divisor_not_zero(cls, v):
+        if v == 0:
+            raise ValueError("Cannot divide by zero.")
+        return v
 
 
 # --- Tool Classes ---
@@ -141,6 +165,56 @@ class AnalyzeYoutubeMetadataTool(BaseTool):
             return f"Error setting up YouTube analysis for {youtube_url}: {str(e)}"
 
 
+# --- Basic Math Tools ---
+class AddTool(BaseTool):
+    name: str = "add"
+    description: str = "Adds two integer numbers (a + b)."
+    args_schema: Type[BaseModel] = MathInput
+
+    def _run(self, a: int, b: int) -> int:
+        return a + b
+
+
+class SubtractTool(BaseTool):
+    name: str = "subtract"
+    description: str = "Subtracts the second integer from the first (a - b)."
+    args_schema: Type[BaseModel] = MathInput
+
+    def _run(self, a: int, b: int) -> int:
+        return a - b
+
+
+class MultiplyTool(BaseTool):
+    name: str = "multiply"
+    description: str = "Multiplies two integer numbers (a * b)."
+    args_schema: Type[BaseModel] = MathInput
+
+    def _run(self, a: int, b: int) -> int:
+        return a * b
+
+
+class DivideTool(BaseTool):
+    name: str = "divide"
+    description: str = "Divides the first integer by the second integer (a / b). Returns a float. Cannot divide by zero."
+    args_schema: Type[BaseModel] = DivideMathInput  # Use validator for divisor
+
+    def _run(self, a: int, b: int) -> float:
+        # Validation happens in Pydantic model now
+        return float(a) / b  # Return float for precision
+
+
+class ModulusTool(BaseTool):
+    name: str = "modulus"
+    description: str = (
+        "Calculates the modulus of the first integer divided by the second (a % b)."
+    )
+    args_schema: Type[BaseModel] = DivideMathInput  # Use validator for divisor
+
+    def _run(self, a: int, b: int) -> int:
+        # Validation happens in Pydantic model now
+        return a % b
+
+
 if __name__ == "__main__":
     # Test PythonReplTool
     print("Testing PythonReplTool...")
@@ -169,3 +243,41 @@ if __name__ == "__main__":
         print("AnalyzeYoutubeMetadataTool invalid URL result: ✅\n", invalid_result)
     else:
         print("AnalyzeYoutubeMetadataTool invalid URL result: ❌\n", invalid_result)
+
+    # Test basic math tools
+    print("\nTesting basic math tools...")
+    add_tool = AddTool()
+    add_tool_result = add_tool._run(5, 3)
+    if add_tool_result == 8:
+        print("AddTool result: ✅", add_tool_result)
+    else:
+        print("AddTool result: ❌", add_tool_result)
+    subtract_tool = SubtractTool()
+    subtract_tool_result = subtract_tool._run(5, 3)
+    if subtract_tool_result == 2:
+        print("SubtractTool result: ✅", subtract_tool_result)
+    else:
+        print("SubtractTool result: ❌", subtract_tool_result)
+    multiply_tool = MultiplyTool()
+    multiply_tool_result = multiply_tool._run(5, 3)
+    if multiply_tool_result == 15:
+        print("MultiplyTool result: ✅", multiply_tool_result)
+    else:
+        print("MultiplyTool result: ❌", multiply_tool_result)
+    divide_tool = DivideTool()
+    divide_tool_result = divide_tool._run(5, 2)
+    if divide_tool_result == 2.5:
+        print("DivideTool result: ✅", divide_tool_result)
+    else:
+        print("DivideTool result: ❌", divide_tool_result)
+    # Test division by zero
+    try:
+        divide_tool._run(5, 0)
+    except ValueError as e:
+        print("DivideTool division by zero result: ✅", e)
+    modulus_tool = ModulusTool()
+    modulus_tool_result = modulus_tool._run(5, 2)
+    if modulus_tool_result == 1:
+        print("ModulusTool result: ✅", modulus_tool_result)
+    else:
+        print("ModulusTool result: ❌", modulus_tool_result)

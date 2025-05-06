@@ -8,20 +8,20 @@ from dotenv import load_dotenv
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # Import the loaded configuration dictionary and helper
-from gaia_agent.config_loader import CONFIG, get_config_value
+from gaia_agent.config_loader import get_config_value
 
 load_dotenv()
 
 # Access values using the helper for safety
-_DEFAULT_LLM_TEMP = get_config_value(["llm", "default_temperature"], 0.1)
+_DEFAULT_LLM_TEMP = get_config_value(["planner", "default_temperature"], 0.1)
 _GEMINI_MODEL_ID = get_config_value(
     ["llm", "models", "gemini"], "gemini-2.5-pro-exp-03-25"
 )
-_GROQ_MODEL_ID = get_config_value(["llm", "models", "groq"], "llama-3.3-70b-versatile")
+_GROQ_MODEL_ID = get_config_value(["planner", "models", "groq"], "qwen-qwq-32b")
 _HF_MODEL_ID = get_config_value(
     ["llm", "models", "hf_inference"], "google/gemma-3-27b-it"
 )
-_DEFAULT_PLANNER = get_config_value(["llm", "default_planner"], "gemini")
+_DEFAULT_PLANNER = get_config_value(["planner", "default_planner"], "groq")
 
 
 def get_gemini_llm(
@@ -120,14 +120,14 @@ def get_groq_llm(
         model_name=model_name,
         temperature=temperature,
         groq_api_key=key,
-        max_tokens=65536,
+        max_tokens=131072,
     )
 
 
 def get_hf_inference_llm(
     repo_id: str = _HF_MODEL_ID,
     temperature: float = _DEFAULT_LLM_TEMP,
-    max_new_tokens: int = 1024,
+    max_new_tokens: int = 8000,
     api_key: Optional[str] = None,
     api_url: Optional[str] = None,
 ) -> BaseChatModel:
@@ -178,6 +178,7 @@ def get_hf_inference_llm(
         max_new_tokens=max_new_tokens,
         huggingfacehub_api_token=key,
         endpoint_url=api_url,
+        task="text-generation",
     )
 
 
@@ -209,15 +210,15 @@ def get_llm(llm_type: str = _DEFAULT_PLANNER) -> BaseChatModel:
     """
     print(f"Attempting to get LLM of type: {llm_type}")
 
-    if llm_type == "gemini":
+    if "gemini" in llm_type:
         return get_gemini_llm()
-    elif llm_type == "groq":
+    elif "groq" in llm_type:
         return get_groq_llm()
-    elif llm_type == "hf":
+    elif "hf" in llm_type:
         return get_hf_inference_llm()
     else:
-        print(f"Warning: Unknown LLM type '{llm_type}'. Defaulting to Gemini.")
-        return get_gemini_llm()
+        print(f"Warning: Unknown LLM type '{llm_type}'. Defaulting to Groq.")
+        return get_groq_llm()
 
 
 # --- Example Usage ---
