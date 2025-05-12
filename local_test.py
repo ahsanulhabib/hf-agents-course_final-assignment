@@ -210,42 +210,42 @@ SAMPLE_QUESTIONS = [
         "task_id": "task_028",
         "question": "What is the name of the actor who played Ray in the Polish-language version of Everybody Loves Raymond?",
         "expected_answer": "Bartłomiej Kasprzykowski",
-        "has_file": True,
+        "has_file": False,
         "file_content": None,
     },
     {
         "task_id": "task_029",
         "question": "How many at bats did the Yankee with the most walks in the 1977 regular season have that same season?",
         "expected_answer": "589",
-        "has_file": True,
+        "has_file": False,
         "file_content": None,
     },
     {
         "task_id": "task_030",
         "question": "Where were the Vietnamese specimens described by Kuznetzov in Nedoshivina's 2010 paper eventually deposited? Just give me the city name without abbreviations.",
         "expected_answer": "Saint Petersburg",
-        "has_file": True,
+        "has_file": False,
         "file_content": None,
     },
     {
         "task_id": "task_031",
         "question": "What country had the least number of athletes \n        at the 1928 Summer Olympics? If there's a tie for a number of athletes, return the first in alphabetical order. Give the IOC country \n        code as your answer.",
         "expected_answer": "Cuba",
-        "has_file": True,
+        "has_file": False,
         "file_content": None,
     },
     {
         "task_id": "task_032",
         "question": "Who are the pitchers with the number before and after Taishō Tamai's number as of July 2023? Give them to me in the form Pitcher Before, Pitcher After, use their last names only, in Roman characters.",
         "expected_answer": "Yamasaki, Uehara",
-        "has_file": True,
+        "has_file": False,
         "file_content": None,
     },
     {
         "task_id": "task_033",
         "question": "What is the name of the actor who played Ray in the Polish-language version of Everybody Loves Raymond?",
         "expected_answer": "Claus",
-        "has_file": True,
+        "has_file": False,
         "file_content": None,
     },
 ]
@@ -320,17 +320,17 @@ def normalize_answer(answer: Optional[str]) -> str:
             .decode("ascii")
         )
 
-    ans = answer.strip().lower()
-    ans = unicode_normalize(ans)
+    # ans = answer.strip().lower()
+    # ans = unicode_normalize(answer)
 
     # Remove enclosing quotes
-    ans = ans.strip("\"'`")
+    ans = answer.strip("\"'`")
 
     # Remove articles
     # ans = re.sub(r"\b(a|an|the)\b", " ", ans)
 
     # Remove most punctuation except . , : ; /
-    ans = re.sub(r"[^\w\s\.,:;/\-]", "", ans)
+    # ans = re.sub(r"[^\w\s\.,:;/\-]", "", ans)
 
     # Collapse multiple spaces
     ans = re.sub(r"\s+", " ", ans)
@@ -365,14 +365,16 @@ def normalize_answer(answer: Optional[str]) -> str:
         "g",
         "grams",
     ]
-    for unit in units:
-        ans = ans.replace(unit, "")
+    # for unit in units:
+    #     ans = ans.replace(unit, "")
 
     common_phrases = [
         "for example",
         "such as",
         "in other words",
         "that is",
+        "based on the search results,",
+        "according to the search results,",
     ]
     for phrase in common_phrases:
         ans = ans.replace(phrase, "")

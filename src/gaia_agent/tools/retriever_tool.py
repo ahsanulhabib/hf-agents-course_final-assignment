@@ -118,7 +118,8 @@ if __name__ == "__main__":
         logger.info("Retriever Tool is set up and ready to use.")
     else:
         logger.warning("Retriever Tool setup failed. Check logs for details.")
-    # Example usage of the tool (if needed)
+
+    # Example usage of the tool
     if RETRIEVER_TOOL_INSTANCE:
         test_query = "What is the capital of France?"
         try:

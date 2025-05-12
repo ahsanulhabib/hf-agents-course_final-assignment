@@ -1,4 +1,6 @@
 import os
+from typing import Optional
+import re
 import gradio as gr
 import requests
 import pandas as pd
@@ -75,6 +77,105 @@ else:
         )  # Log the exception details
 
 
+def normalize_answer(answer: Optional[str]) -> str:
+    """Normalize the answer to a more consistent format."""
+    if answer is None:
+        return ""
+
+    match = re.search(r"final answer\s*:\s*(.*)", answer, re.IGNORECASE | re.DOTALL)
+    if match:
+        ans = match.group(1).strip()
+
+    # Unicode normalization (remove accents, etc.)
+    def unicode_normalize(text):
+        import unicodedata
+
+        return (
+            unicodedata.normalize("NFKD", text)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
+
+    # ans = ans.strip().lower()
+    # ans = unicode_normalize(answer)
+
+    # Remove enclosing quotes
+    ans = answer.strip("\"'`")
+
+    # Remove articles
+    # ans = re.sub(r"\b(a|an|the)\b", " ", ans)
+
+    # Remove most punctuation except . , : ; /
+    # ans = re.sub(r"[^\w\s\.,:;/\-]", "", ans)
+
+    # Collapse multiple spaces
+    ans = re.sub(r"\s+", " ", ans)
+
+    # Remove trailing/leading punctuation
+    ans = ans.strip(".,:;/ ")
+
+    # Normalize numbers (e.g., "12.0" -> "12")
+    try:
+        float_ans = float(ans)
+        if float_ans.is_integer():
+            ans = str(int(float_ans))
+        else:
+            ans = str(float_ans)
+    except ValueError:
+        pass
+
+    # Remove common units/phrases (optional, extend as needed)
+    units = [
+        "m/s",
+        "meters per second",
+        "km/h",
+        "kilometers per hour",
+        "°c",
+        "celsius",
+        "fahrenheit",
+        "usd",
+        "dollars",
+        "euros",
+        "kg",
+        "kilograms",
+        "g",
+        "grams",
+    ]
+    # for unit in units:
+    #     ans = ans.replace(unit, "")
+
+    common_phrases = [
+        "for example",
+        "such as",
+        "in other words",
+        "that is",
+        "based on the search results,",
+        "according to the search results,",
+    ]
+    for phrase in common_phrases:
+        ans = ans.replace(phrase, "")
+
+    # Replace superscripts with ^ notation (e.g., a² -> a^2)
+    superscript_map = {
+        "²": "^2",
+        "³": "^3",
+        "⁴": "^4",
+        "⁵": "^5",
+        "⁶": "^6",
+        "⁷": "^7",
+        "⁸": "^8",
+        "⁹": "^9",
+        "¹": "^1",
+        "⁰": "^0",
+    }
+    for sup, rep in superscript_map.items():
+        ans = ans.replace(sup, rep)
+
+    # Final cleanup
+    ans = ans.strip()
+    return ans
+
+
 # --- Main Evaluation Function ---
 def run_and_submit_all(profile: gr.OAuthProfile | None):
     """
@@ -118,7 +219,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
     # 1. Fetch Questions
     logger.info(f"Fetching questions from: {questions_url}")
     try:
-        response = requests.get(questions_url, timeout=20)  # Increased timeout
+        response = requests.get(questions_url, timeout=30)  # Increased timeout
         response.raise_for_status()
         questions_data = response.json()
         if not questions_data or not isinstance(questions_data, list):
@@ -152,7 +253,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
         logger.info(
             f"--- Processing Task {i + 1}/{len(questions_data)} (ID: {task_id}) ---"
         )
-        logger.debug(f"Question: {question_text[:150]}...")  # Log truncated question
+        logger.debug(f"Question: {question_text}...")  # Log truncated question
 
         if not task_id or question_text is None:
             logger.warning(f"Skipping item with missing task_id or question: {item}")
@@ -186,7 +287,7 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
                     logger.warning("Submitting agent error note as answer.")
 
             elif agent_result.get("answer") is not None:
-                submitted_answer = agent_result["answer"]
+                submitted_answer = normalize_answer(agent_result["answer"])
                 logger.info(f"Agent answer generated: {submitted_answer[:100]}...")
             else:
                 logger.error(
