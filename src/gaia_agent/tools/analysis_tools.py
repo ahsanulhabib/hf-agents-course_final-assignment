@@ -382,7 +382,7 @@ class AnalyzeImageContentTool(BaseTool):
             # Note: Ensure the model used actually supports vision input. 1.5 Pro does.
             llm = ChatGoogleGenerativeAI(
                 model=get_config_value(
-                    ["llm", "models", "gemini"], "gemini-1.5-pro-latest"
+                    ["llm", "models", "gemini"], "gemini-2.5-pro-preview-05-06"
                 ),
                 google_api_key=google_api_key,
                 temperature=get_config_value(["llm", "default_temperature"], 0.1),

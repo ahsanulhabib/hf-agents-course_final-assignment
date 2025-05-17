@@ -4,7 +4,7 @@
 # Build system configuration (required by PEP 517/518)
 # Tells tools like pip and uv how to build your project if it needs building
 # (even simple projects need this section)
-requires = ["setuptools>=80.3.0", "wheel>=0.38.4"]
+requires = ["setuptools>80.3.0", "wheel>=0.38.4"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -39,19 +39,19 @@ dependencies = [
     "huggingface-hub>=0.20.0",
     "ipykernel>=6.0.0",
     "ipython>=7.0.0",
-    "langchain-community>=0.0.20",
-    "langchain-core>0.3.0",
+    "langchain-community>=0.0.30,<0.1.0",
+    # "langchain-core>0.3.0",
     "langchain-experimental",
-    "langchain-google-genai>=1.0.0",
-    "langchain-groq>=0.1.0",
-    "langchain-huggingface>0.1.1",
+    "langchain-google-genai",
+    "langchain-groq",
+    "langchain-huggingface",
     "lancedb>=0.21.2",
     "langchain-openai<=0.3.14",
-    "langchain>=0.1.0",
-    "langchainhub>0.1.15",
+    "langchain",
+    "langchainhub",
     "supabase>=2.0.0",
     "lark-parser>0.10.0",
-    "langgraph>=0.3.34,<0.4.1",
+    "langgraph",
     "lorem-text>2.0.0",
     "loguru>=0.7.0",
     "numpy>=1.21.0",

@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 from typing import List, Optional
 from langchain_core.tools import BaseTool
 
@@ -35,6 +36,8 @@ def get_all_tools(tavily_api_key: Optional[str] = None) -> List[BaseTool]:
     Initializes and returns instances of all available tools.
     Handles potential initialization errors gracefully.
     """
+    load_dotenv()  # Load environment variables from .env file
+    # Initialize an empty list to store tool instances
     tools = []
     print("--- Initializing All Tools ---")
 

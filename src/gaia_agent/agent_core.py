@@ -79,7 +79,7 @@ def planner_node(
         # Invoke the LLM
         response: BaseMessage = planner_llm_with_tools.invoke(messages_to_llm)
 
-        print(f"Planner LLM Raw Response Type: {type(response)}")
+        # print(f"Planner LLM Raw Response Type: {type(response)}")
         print(f"Planner LLM Raw Response Content: {response.content}")
         if hasattr(response, "tool_calls") and response.tool_calls:
             print(f"Planner LLM Tool Calls: {response.tool_calls}")
@@ -276,12 +276,12 @@ def final_answer_node(state: AgentState) -> Dict[str, Any]:
 
     final_answer_cleaned = _clean_gaia_answer(final_answer_raw)
 
-    original_input = state.get("input", "")
+    # original_input = state.get("input", "")
 
-    if original_input.startswith(".") or ".rewsna eht sa" in original_input:
-        print("Reversing cleaned answer for GAIA requirement.")
-        final_answer_cleaned = final_answer_cleaned[::-1]
-        print(f"Reversed final answer: {final_answer_cleaned}")
+    # if original_input.startswith(".") or ".rewsna eht sa" in original_input:
+    #     print("Reversing cleaned answer for GAIA requirement.")
+    #     final_answer_cleaned = final_answer_cleaned[::-1]
+    #     print(f"Reversed final answer: {final_answer_cleaned}")
     return {
         "final_answer": final_answer_cleaned,
         "error": error_msg if error_msg else None,

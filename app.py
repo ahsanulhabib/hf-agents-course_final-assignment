@@ -281,14 +281,14 @@ def run_and_submit_all(profile: gr.OAuthProfile | None):
                 if agent_result.get("answer") is not None:
                     submitted_answer = agent_result["answer"]
                     logger.info(
-                        f"Agent provided answer despite error: {submitted_answer[:100]}..."
+                        f"Agent provided answer despite error: {submitted_answer}..."
                     )
                 else:
                     logger.warning("Submitting agent error note as answer.")
 
             elif agent_result.get("answer") is not None:
                 submitted_answer = normalize_answer(agent_result["answer"])
-                logger.info(f"Agent answer generated: {submitted_answer[:100]}...")
+                logger.info(f"Agent answer generated: {submitted_answer}...")
             else:
                 logger.error(
                     f"Agent returned neither answer nor error for task {task_id}."

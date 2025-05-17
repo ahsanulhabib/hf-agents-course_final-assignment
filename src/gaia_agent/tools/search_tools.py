@@ -1,8 +1,12 @@
 import os
-from typing import Optional, Type
+import json
+from typing import Type, Optional, Any
 from pydantic import BaseModel, Field
 
-from langchain_community.tools.tavily_search import TavilySearchResults
+from langchain_community.tools.tavily_search import (
+    TavilySearchResults as LC_TavilySearchTool,
+)
+from langchain_community.utilities.tavily_search import TavilySearchAPIWrapper
 from langchain_community.tools.ddg_search import DuckDuckGoSearchRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from langchain_community.utilities.arxiv import ArxivAPIWrapper
@@ -26,30 +30,55 @@ class SearchInput(BaseModel):
 
 # --- Tool Classes ---
 class TavilySearchTool(BaseTool):
-    name: str = "tavily_search_results_json"
-    description: str = (
+    name: str = "tavily_search"  # Name of the tool
+    description: str = (  # Description explaining the tool's purpose and input
         "A search engine optimized for comprehensive, accurate results. "
-        "Useful for questions about current events, facts, and general knowledge."
+        "Useful for questions about current events, facts, and general knowledge. "
+        "Input is a search query."
     )
-    args_schema: Type[BaseModel] = SearchInput
-    api_wrapper: TavilySearchResults
+    args_schema: Type[BaseModel] = SearchInput  # Schema for the tool's input
+    api_wrapper: TavilySearchAPIWrapper  # Field to hold the API wrapper instance
+    max_results: int = 10  # Field to hold the maximum number of search results
 
-    def __init__(self, api_key: Optional[str] = None, max_results: int = 5):
-        super().__init__()  # Initialize BaseTool
-        resolved_api_key = api_key or os.getenv("TAVILY_API_KEY")
+    def __init__(
+        self, api_key: Optional[str] = None, max_results: int = 10, **kwargs: Any
+    ):
+        # Resolve the Tavily API key from argument or environment variables
+        resolved_api_key = (
+            api_key or os.getenv("TAVILY_API_TOKEN") or os.getenv("TAVILY_API_KEY")
+        )
         if not resolved_api_key:
-            raise ValueError(
-                "Tavily API Key not found. Set TAVILY_API_KEY env var or pass api_key."
-            )
-        self.api_wrapper = TavilySearchResults(
-            max_results=max_results, api_key=resolved_api_key
+            # Raise error if API key is not found
+            raise ValueError("Tavily API Key not found. Set your Tavily API key.")
+
+        # Create the TavilySearchAPIWrapper instance before initializing the base class
+        try:
+            tavily_wrapper = TavilySearchAPIWrapper(tavily_api_key=resolved_api_key)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to initialize TavilySearchAPIWrapper: {e}"
+            ) from e
+
+        # Initialize the BaseTool class, passing all required fields
+        super().__init__(
+            name="tavily_search",
+            # description=self.description,
+            # args_schema=self.args_schema,
+            api_wrapper=tavily_wrapper,
+            max_results=max_results,
+            **kwargs,
         )
 
-    def _run(self, query: str) -> str:
+    def _run(self, query: str, run_manager: Optional[Any] = None) -> str:
+        """Executes the Tavily search using the API wrapper."""
         try:
-            return self.api_wrapper.run(query)
+            # Call the results method on the stored api_wrapper instance
+            results = self.api_wrapper.results(query, max_results=self.max_results)
+            # Convert the results to a string (e.g., JSON) for the tool's output
+            return json.dumps(results, indent=2)
         except Exception as e:
-            return f"Error during Tavily search: {e}"
+            # Return an error message if the search fails
+            return f"Error performing Tavily search for '{query}': {e}"
 
 
 class DuckDuckGoSearchTool(BaseTool):
@@ -90,7 +119,9 @@ class WikipediaSearchTool(BaseTool):
         # Create the instance of the api_wrapper *before* calling super()
         try:
             api_wrapper_instance = WikipediaAPIWrapper(
-                top_k_results=top_k_results, doc_content_chars_max=doc_content_chars_max
+                top_k_results=top_k_results,
+                doc_content_chars_max=doc_content_chars_max,
+                wiki_client=None,  # Set wiki_client to None or your desired client instance
             )
         except ImportError:
             raise ImportError(
@@ -126,7 +157,11 @@ class ArXivSearchTool(BaseTool):
     api_wrapper: ArxivAPIWrapper
 
     def __init__(self, top_k_results: int = 10, **kwargs):
-        api_wrapper_instance = ArxivAPIWrapper(top_k_results=top_k_results)
+        api_wrapper_instance = ArxivAPIWrapper(
+            top_k_results=top_k_results,
+            # arxiv_search=arxiv_search,
+            # arxiv_exceptions=arxiv_exceptions,
+        )
         super().__init__(api_wrapper=api_wrapper_instance, **kwargs)
 
     def _run(self, query: str) -> str:
@@ -156,6 +191,10 @@ class ArxivDocumentSearchTool(BaseTool):
     def _run(self, query: str) -> str:
         logger.debug(f"Running Arxiv Search for: {query}")
         try:
+            if ArxivLoader is None:
+                raise ImportError(
+                    "Arxiv tool requires `arxiv` library. Run `pip install arxiv`."
+                )
             loader = ArxivLoader(
                 query=query,
                 load_max_docs=self.load_max_docs,
