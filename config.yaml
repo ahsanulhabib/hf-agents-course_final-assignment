@@ -1,6 +1,6 @@
 planner:
   # Select the primary model for the main planner agent
-  default_planner: groq # Options: gemini, groq, hf
+  default_planner: gemini # Options: gemini, groq, hf
   models:
     gemini: gemini-2.5-pro-preview-05-06 # gemini-2.5-flash-preview-04-17
     groq: qwen-qwq-32b

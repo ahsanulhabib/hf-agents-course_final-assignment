@@ -2,6 +2,8 @@ import json
 import traceback
 from typing import TypedDict, Annotated, Sequence, List, Optional, Dict, Any
 
+from langchain.tools import StructuredTool
+
 # from langchain_core.agents import AgentAction, AgentFinish
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from langchain_core.tools import BaseTool  # Still need BaseTool for type hinting
@@ -60,17 +62,24 @@ def planner_node(
     tool_descriptions = "\n".join([f"- {tool.name}" for tool in tools])
 
     print(f"Tools available to LLM:\n{tool_descriptions}")
-
-    if hasattr(planner_llm, "bind_tools"):
-        planner_llm_with_tools = planner_llm.bind_tools(tools)
-        system_prompt_message = prompt_template.format_messages(
-            tool_descriptions=tool_descriptions,
-            input=state["input"],
-        )[0]
-        messages_to_llm = [system_prompt_message] + list(state["messages"])
-    else:
+    try:
+        if hasattr(planner_llm, "bind_tools"):
+            # Filter tools for Gemini compatibility
+            compatible_tools = [t for t in tools if isinstance(t, StructuredTool)]
+            if compatible_tools:
+                planner_llm_with_tools = planner_llm.bind_tools(compatible_tools)
+            else:
+                planner_llm_with_tools = planner_llm
+            system_prompt_message = prompt_template.format_messages(
+                tool_descriptions=tool_descriptions,
+                input=state["input"],
+            )[0]
+            messages_to_llm = [system_prompt_message] + list(state["messages"])
+        else:
+            planner_llm_with_tools = planner_llm
+    except Exception as e:
+        print(f"Error binding tools: {e}")
         planner_llm_with_tools = planner_llm
-        # For HuggingFaceEndpoint, just use the user input and message history
         messages_to_llm = list(state["messages"])
 
     # print(f"Messages to LLM: {messages_to_llm}")
@@ -427,7 +436,7 @@ if __name__ == "__main__":
     from gaia_agent.llm_config import get_llm
     # from IPython.display import Image, display
 
-    planner_llm = get_llm("groq")  # gemini, groq, or hf
+    planner_llm = get_llm("gemini")  # gemini, groq, or hf
     tools = get_all_tools()
     agent_graph = create_gaia_agent_graph(planner_llm, tools)
 

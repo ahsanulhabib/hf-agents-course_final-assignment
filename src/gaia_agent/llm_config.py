@@ -1,5 +1,7 @@
 import os
 from typing import Optional
+
+# from langchain_core.utils import SecretStr
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEndpoint
@@ -15,13 +17,11 @@ load_dotenv()
 # Access values using the helper for safety
 _DEFAULT_LLM_TEMP = get_config_value(["planner", "default_temperature"], 0.1)
 _GEMINI_MODEL_ID = get_config_value(
-    ["llm", "models", "gemini"], "gemini-2.5-pro-exp-03-25"
+    ["planner", "models", "gemini"], "gemini-2.5-pro-preview-05-06"
 )
 _GROQ_MODEL_ID = get_config_value(["planner", "models", "groq"], "qwen-qwq-32b")
-_HF_MODEL_ID = get_config_value(
-    ["llm", "models", "hf_inference"], "google/gemma-3-27b-it"
-)
-_DEFAULT_PLANNER = get_config_value(["planner", "default_planner"], "groq")
+_HF_MODEL_ID = get_config_value(["planner", "models", "hf"], "google/gemma-3-27b-it")
+_DEFAULT_PLANNER = get_config_value(["planner", "default_planner"], "gemini")
 
 
 def get_gemini_llm(
@@ -75,6 +75,11 @@ def get_gemini_llm(
         safety_settings=safety_settings,
         # convert_system_message_to_human=True,
         max_output_tokens=65536,
+        client_options=None,
+        transport=None,
+        additional_headers=None,
+        client=None,
+        async_client=None,
     )
 
 
@@ -117,9 +122,9 @@ def get_groq_llm(
     print(f"Initializing Groq model: {model_name}")
 
     return ChatGroq(
-        model_name=model_name,
+        model=model_name,
         temperature=temperature,
-        groq_api_key=key,
+        api_key=key,
         max_tokens=131072,
     )
 
